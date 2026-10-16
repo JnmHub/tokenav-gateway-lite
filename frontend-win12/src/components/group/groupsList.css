@@ -1,0 +1,27 @@
+.groups { height: 100%; min-height: 0; overflow-y: auto; }
+.group-filters { display: grid; grid-template-columns: repeat(3,minmax(100px,160px)); gap: 8px; margin-bottom: 12px; }
+.group-filters :deep(.ant-select) { width: 100%; }
+.group-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 12px; font-size: 12px; color: var(--w12-muted); }
+.error, .load-error { color: var(--w12-danger); }
+.load-error { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.group-name { display: block; overflow: hidden; text-overflow: ellipsis; }
+.name-labels { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.account-counts { display: block; font-size: 11px; color: var(--w12-muted); }
+.column-options { display: flex; flex-direction: column; gap: 12px; }
+.mobile-sort { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.mobile-sort :deep(.ant-select) { flex: 1; min-width: 0; }
+.mobile-sort :deep(.ant-btn) { flex: none; }
+.mobile-pagination { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px; margin: 16px 0; }
+.mobile-pagination :deep(.ant-pagination-options) { margin-inline-start: 0; }
+.mobile-pagination :deep(.ant-pagination-simple-pager input) { width: 40px; }
+.cap2 { display: flex; flex-direction: column; gap: 4px; min-width: 170px; }
+.cap2-row { display: flex; align-items: center; gap: 8px; }
+.cap2-k { flex: none; width: 48px; font-size: 11px; color: var(--w12-muted); text-align: right; }
+.cap2-live { flex: 1; font-family: Consolas, monospace; font-size: 14px; font-weight: 500; color: var(--w12-muted); display: flex; align-items: center; gap: 6px; }
+.cap2-live.live { color: var(--accent); }
+.cap2-live.live::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+.cap2-bar { flex: 1; height: 4px; border-radius: 2px; background: var(--w12-border); overflow: hidden; }
+.cap2-bar i { display: block; height: 100%; border-radius: 2px; background: var(--accent); transition: width .2s; }
+.cap2-v { flex: none; width: 64px; font-family: Consolas, monospace; font-size: 11px; color: var(--w12-muted); }
+.usage { display: grid; gap: 4px; font-size: 12px; }.usage small { color: var(--w12-muted); font-size: 11px; }.dim { color: var(--w12-muted); }
+@container w12-app (max-width: 600px) { .group-filters { grid-template-columns: minmax(0,1fr); } }

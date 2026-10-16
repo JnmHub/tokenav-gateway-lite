@@ -1,0 +1,116 @@
+/* 外壳只管理桌面/窗口/系统层，业务样式由 design 和各应用负责。 */
+:root {
+  --w12-window: rgba(247, 247, 249, .92);
+  --w12-body: rgba(249, 249, 250, .97);
+  --w12-popup: rgba(251, 251, 252, .97);
+  --w12-card: rgba(255, 255, 255, .76);
+  --w12-shadow: 0 2px 12px rgba(0, 0, 0, .12);
+  --w12-layer-system: 900;
+}
+:root.dark {
+  --w12-window: rgba(32, 32, 32, .94);
+  --w12-body: rgba(32, 32, 32, .97);
+  --w12-popup: rgba(43, 43, 43, .98);
+  --w12-card: rgba(43, 43, 43, .96);
+  --w12-shadow: 0 2px 12px rgba(0, 0, 0, .24);
+}
+:root .w12-desktop {
+  position: fixed; inset: 0; background-size: cover; background-position: center;
+  isolation: isolate; padding-top: env(safe-area-inset-top, 0px);
+}
+.w12-wall-logo { position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%); width: min(30vw, 340px); opacity: .13; filter: invert(1); pointer-events: none; z-index: 0; }
+.w12-wall-logo img { width: 100%; display: block; }
+:root.dark .w12-wall-logo { filter: none; opacity: .15; }
+.w12-dicons { position: absolute; top: 10px; left: 10px; bottom: 76px; display: flex; flex-direction: column; flex-wrap: wrap; align-content: flex-start; gap: 4px; }
+.w12-dicon { width: 84px; padding: 8px 4px; display: flex; flex-direction: column; align-items: center; gap: 8px; border: 1px solid transparent; border-radius: 8px; background: transparent; font: inherit; color: var(--text); cursor: default; }
+.w12-dicon:hover { background: var(--hover-b); }
+.w12-dicon.sel { background: var(--hover-b); border-color: var(--hr); }
+.w12-dicon .name { font-size: 12px; text-align: center; line-height: 1.35; color: var(--dicon-fg, #1c1c1c); text-shadow: 0 1px 2px #ffffffd9; }
+:root.dark .w12-dicon .name { color: #eee; text-shadow: 0 1px 2px #0008; }
+:root .w12-win {
+  position: absolute; display: flex; flex-direction: column; isolation: isolate;
+  border-radius: 12px; border: 1px solid var(--hr); background: var(--w12-window);
+  box-shadow: var(--w12-shadow); overflow: hidden; opacity: 0; transform: scale(.96);
+  transition: transform 180ms var(--ease-open), opacity 140ms var(--ease-open);
+  backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); user-select: text; outline: none;
+}
+:root .w12-win.foc { background: var(--w12-window); box-shadow: var(--w12-shadow); }
+:root .w12-win.show { opacity: 1; transform: none; }
+:root .w12-win.is-dragging { transition: none; transform: none; }
+:root .w12-win.max, :root .w12-win.is-mobile { border-radius: 0; }
+:root .w12-win.min { opacity: 0; transform: translate(var(--min-x, 0px), var(--min-y, 40px)) scale(.12); pointer-events: none; visibility: hidden; }
+:root .w12-win.is-hidden:not(.closing):not(.min) { visibility: hidden; pointer-events: none; }
+:root .w12-win.closing { opacity: 0; transform: scale(.96); pointer-events: none; }
+.w12-titbar { height: 40px; flex: none; display: flex; align-items: center; padding-left: 12px; touch-action: none; user-select: none; background: rgba(255, 255, 255, .04); }
+.w12-titbar .wt { flex: 1; min-width: 0; margin-left: 8px; font-size: 13px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.w12-win:not(.foc) .w12-titbar { color: var(--text2); }
+.w12-wbtns { height: 100%; display: flex; }
+.w12-wbtn { width: 44px; border: 0; background: transparent; color: inherit; display: grid; place-items: center; cursor: pointer; font-size: 13px; transition: background 100ms; }
+.w12-wbtn:hover { background: var(--hover-b); }
+.w12-wbtn:active { background: var(--fill-press); }
+.w12-wbtn.red:hover { color: #b3261e; background: rgba(196, 43, 28, .1); }
+:root.dark .w12-wbtn.red:hover { color: #f19994; }
+.w12-content { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--w12-body); }
+:root .app-surface { flex: 1; min-height: 0; margin: 0; padding: 16px; overflow: auto; background: var(--w12-body); border-radius: 0; container: w12-app / inline-size; }
+:root .app-surface.nopad { padding: 16px; }
+.w12-window-layer { position: absolute; inset: 40px 0 0; z-index: 60; pointer-events: none; }
+.w12-window-layer > * { pointer-events: auto; }
+.w12-window-layer .ant-modal-root .ant-modal-mask, .w12-window-layer .ant-modal-root .ant-modal-wrap { position: absolute; }
+.w12-window-layer .ant-modal-wrap { inset: 0; overflow: auto; }
+.w12-window-layer .ant-modal { top: 16px; padding-bottom: 16px; max-width: calc(100% - 24px); }
+.w12-window-layer .ant-modal-mask { background: rgba(0, 0, 0, .18); }
+.rs { position: absolute; z-index: 8; touch-action: none; }
+.rs.n { top: 0; left: 12px; right: 12px; height: 5px; cursor: ns-resize; }
+.rs.s { bottom: 0; left: 12px; right: 12px; height: 6px; cursor: ns-resize; }
+.rs.e { right: 0; top: 12px; bottom: 12px; width: 6px; cursor: ew-resize; }
+.rs.w { left: 0; top: 12px; bottom: 12px; width: 6px; cursor: ew-resize; }
+.rs.ne, .rs.nw, .rs.se, .rs.sw { width: 12px; height: 12px; }
+.rs.ne { top: 0; right: 0; cursor: nesw-resize; }.rs.nw { top: 0; left: 0; cursor: nwse-resize; }
+.rs.se { bottom: 0; right: 0; cursor: nwse-resize; }.rs.sw { bottom: 0; left: 0; cursor: nesw-resize; }
+.w12-snap-preview { position: absolute; border: 2px solid var(--accent); border-radius: 12px; background: color-mix(in srgb, var(--accent) 12%, transparent); pointer-events: none; z-index: 700; }
+.w12-dock-box { position: fixed; bottom: max(8px, env(safe-area-inset-bottom, 0px)); left: 12px; right: 12px; height: 48px; display: flex; align-items: center; justify-content: center; gap: 8px; z-index: var(--w12-layer-system); pointer-events: none; }
+.w12-dock { height: 48px; display: flex; align-items: center; gap: 4px; padding: 4px 6px; border: 1px solid var(--hr); border-radius: 12px; background: var(--w12-popup); backdrop-filter: blur(24px); box-shadow: 0 1px 6px #0001; pointer-events: auto; max-width: calc(100% - 180px); overflow-x: auto; }
+.w12-dock-btn { position: relative; flex: none; width: 40px; height: 40px; display: flex; justify-content: center; align-items: center; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--text); cursor: pointer; font-size: 22px; transition: background 100ms; }
+.w12-dock-btn:hover, .w12-dock-btn.foc { background: var(--hover-b); }
+.w12-dock-btn:active { background: var(--fill-press); }
+.w12-dock-btn .ind { position: absolute; bottom: 0; height: 3px; width: 0; border-radius: 4px; background: var(--text2); }
+.w12-dock-btn.opened .ind { width: 5px; }.w12-dock-btn.foc .ind { width: 16px; background: var(--accent); }
+.w12-dock-tray { flex: none; max-width: none; overflow: visible; }.w12-tray { display: flex; gap: 4px; align-items: center; }
+.tray-ico, .w12-clock { border: 0; border-radius: 8px; background: transparent; color: var(--text); cursor: pointer; }
+.tray-ico { width: 36px; height: 40px; font-size: 17px; }.w12-clock { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; height: 40px; padding: 0 8px; font-size: 12px; line-height: 1.4; }
+.tray-ico:hover, .w12-clock:hover { background: var(--hover-b); }
+.w12-notices { width: 280px; font-size: 13px; }.w12-notices article { padding: 8px; display: grid; gap: 4px; }.w12-notices small { color: var(--text2); }
+.w12-start { position: fixed; bottom: 72px; left: 50%; transform: translateX(-50%); width: min(800px, calc(100vw - 32px)); max-height: calc(100dvh - 104px); padding: 16px; border-radius: 12px; background: var(--w12-popup); border: 1px solid var(--hr); backdrop-filter: blur(24px); z-index: 890; box-shadow: var(--w12-shadow); animation: w12-menu-in 160ms var(--ease-menu); }
+.w12-start-body { display: flex; gap: 16px; }.w12-start-l { width: 224px; display: flex; flex-direction: column; gap: 16px; flex: none; }.w12-start-r { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.w12-start-user { display: flex; align-items: center; gap: 8px; font-size: 13px; }.w12-start-user > span:last-child { overflow: hidden; text-overflow: ellipsis; }
+.w12-start-search { height: 36px; display: flex; gap: 8px; padding: 0 12px; align-items: center; background: var(--w12-card); border: 1px solid var(--hr); border-radius: 8px; }
+.w12-start-search:focus-within { border-color: var(--accent); }.w12-start-search input { min-width: 0; width: 100%; border: 0; outline: 0; background: transparent; color: inherit; font: inherit; }
+.w12-start-quick { display: grid; gap: 8px; }.w12-start-tools { margin-top: auto; display: flex; gap: 8px; }
+.w12-start button { border: 0; border-radius: 8px; background: transparent; color: var(--text); font: inherit; cursor: pointer; padding: 8px; }
+.w12-start button:hover { background: var(--hover-b); }.w12-start-cardtit { display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 500; margin-bottom: 8px; }.w12-start-cardtit button { font-size: 12px; color: var(--text2); }
+.w12-start-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; overflow: auto; max-height: 340px; }
+.w12-start .w12-start-app { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 4px; font-size: 12px; }
+.w12-start-reco { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }.w12-reco { display: flex; gap: 8px; align-items: center; font-size: 13px; }.w12-start-empty { color: var(--text2); font-size: 13px; }
+.w12-ctx { position: fixed; z-index: 930; min-width: 200px; padding: 4px; border: 1px solid var(--hr); border-radius: 8px; background: var(--w12-popup); backdrop-filter: blur(24px); box-shadow: var(--w12-shadow); }
+.w12-ctx-item { width: 100%; min-height: 36px; padding: 8px 12px; display: flex; gap: 12px; align-items: center; cursor: pointer; border: 0; border-radius: 8px; background: transparent; color: var(--text); text-align: left; font-family: inherit; font-size: 13px; }.w12-ctx-item:hover:not(:disabled) { background: var(--hover-b); }.w12-ctx-item:disabled { opacity: .5; cursor: default; }.w12-ctx-sep { height: 1px; margin: 4px; background: var(--hr); }
+.w12-module-state { display: grid; align-content: center; justify-items: center; min-height: 180px; gap: 12px; font-size: 13px; color: var(--text2); }.w12-retry { background: transparent; border: 1px solid var(--hr); border-radius: 8px; min-height: 32px; padding: 0 12px; color: var(--text); cursor: pointer; }
+.w12-app-switcher { position: absolute; inset: 0 0 72px; z-index: 800; overflow: auto; padding: calc(16px + env(safe-area-inset-top, 0px)) 16px 16px; background: var(--w12-body); }
+.w12-app-switcher h1 { font-size: 28px; font-weight: 600; margin: 0 0 16px; }.w12-app-switcher h2 { font-size: 14px; font-weight: 500; }
+.w12-app-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }.w12-app-grid button { min-height: 88px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; border: 0; border-radius: 8px; background: var(--w12-card); color: var(--text); font-size: 12px; }
+.w12-running-apps { margin-bottom: 16px; }.w12-running-apps button { width: 100%; min-height: 52px; display: flex; align-items: center; gap: 12px; padding: 8px 12px; border: 0; border-radius: 8px; background: var(--w12-card); color: var(--text); margin-bottom: 8px; }.w12-running-apps button span:last-child { margin-left: auto; font-size: 12px; color: var(--text2); }
+:root .w12-desktop button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+@keyframes w12-menu-in { from { opacity: 0; translate: 0 12px; } to { opacity: 1; translate: 0 0; } }
+@media (max-width: 767px) {
+  .w12-dock-box.mobile-nav { left: 0; right: 0; bottom: 0; height: calc(64px + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px); background: var(--w12-popup); border-top: 1px solid var(--hr); }
+  .w12-dock-box.mobile-nav .w12-dock { width: 100%; height: 64px; display: grid; grid-template-columns: repeat(5, 1fr); max-width: none; border: 0; border-radius: 0; padding: 0 8px; box-shadow: none; overflow: visible; background: transparent; }
+  .mobile-nav .w12-dock-btn { width: 100%; min-width: 44px; height: 56px; flex-direction: column; gap: 4px; font-size: 22px; }
+  .dock-label { font-size: 10px; white-space: nowrap; }.mobile-nav .ind { display: none; }
+  .keyboard-open .w12-dock-box { display: none; }
+  :root .w12-win.is-mobile .w12-titbar { height: 44px; }.w12-win.is-mobile .w12-wbtn { width: 44px; }
+  :root .w12-win.is-mobile .app-surface { padding: 12px; }
+  .w12-window-layer { top: 44px; }
+  .w12-window-layer .ant-modal { top: 8px; max-width: calc(100% - 12px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}

@@ -1,0 +1,102 @@
+package service
+
+import "strings"
+
+// SensitiveCredentialKeys 列出 Account.Credentials JSON map 中绝不允许返回到前端的子键。
+// dto 层做响应脱敏、service 层做更新合并都引用此清单——新增凭证类型时务必同步。
+var SensitiveCredentialKeys = []string{
+	// OAuth
+	"access_token", "refresh_token", "id_token", "client_secret", "setup_token", "code_verifier", "agent_private_key",
+	// API Key 类
+	"api_key", "session_key", "cookie",
+	// 云服务凭据
+	"aws_secret_access_key", "aws_session_token",
+	"service_account_json", "service_account", "private_key",
+}
+
+var sensitiveCredentialKeySet = func() map[string]struct{} {
+	m := make(map[string]struct{}, len(SensitiveCredentialKeys))
+	for _, k := range SensitiveCredentialKeys {
+		m[k] = struct{}{}
+	}
+	return m
+}()
+
+// IsSensitiveCredentialKey 判断指定键是否为敏感凭证子键。
+func IsSensitiveCredentialKey(key string) bool {
+	_, ok := sensitiveCredentialKeySet[key]
+	return ok
+}
+
+// MergePreservingSensitiveCreds 把 incoming 写入 existing 之上，但敏感子键采用"incoming 没提供就保留 existing"
+// 的语义。返回新的 map，不修改入参。
+//
+// 用途：前端编辑账号通常采用"全对象 PUT"模式；脱敏后前端 spread 旧 credentials 时不会带上敏感键，
+// 直接覆盖会清空已有 token。此函数保证：
+//   - 非敏感键：完全由 incoming 决定（用户可以编辑、删除非敏感字段）。
+//   - 敏感键：incoming 显式提供则覆盖（用户主动旋转 token），否则保留 existing。
+func MergePreservingSensitiveCreds(existing, incoming map[string]any) map[string]any {
+	out := make(map[string]any, len(incoming)+len(SensitiveCredentialKeys))
+	for k, v := range incoming {
+		if k == HeaderOverridesCredentialKey {
+			// DTO 会把已有 header override 的 value 脱敏为空字符串。编辑页面按
+			// 全对象 PUT 回传时，空值只表示“保留该名称的服务端旧值”；删除名称
+			// 仍表示删除，填写非空值仍表示显式覆盖。
+			out[k] = mergeRedactedHeaderOverrideValues(existing[k], v)
+			continue
+		}
+		out[k] = v
+	}
+	for _, key := range SensitiveCredentialKeys {
+		if _, hasIncoming := incoming[key]; hasIncoming {
+			continue
+		}
+		if existingVal, ok := existing[key]; ok {
+			out[key] = existingVal
+		}
+	}
+	return out
+}
+
+func mergeRedactedHeaderOverrideValues(existing, incoming any) any {
+	incomingMap, ok := credentialStringAnyMap(incoming)
+	if !ok {
+		return incoming
+	}
+	existingMap, _ := credentialStringAnyMap(existing)
+	merged := make(map[string]any, len(incomingMap))
+	for name, value := range incomingMap {
+		if text, isString := value.(string); isString && strings.TrimSpace(text) == "" {
+			if existingValue, found := findCredentialMapValueFold(existingMap, name); found {
+				merged[name] = existingValue
+				continue
+			}
+		}
+		merged[name] = value
+	}
+	return merged
+}
+
+func credentialStringAnyMap(value any) (map[string]any, bool) {
+	switch typed := value.(type) {
+	case map[string]any:
+		return typed, true
+	case map[string]string:
+		out := make(map[string]any, len(typed))
+		for key, item := range typed {
+			out[key] = item
+		}
+		return out, true
+	default:
+		return nil, false
+	}
+}
+
+func findCredentialMapValueFold(values map[string]any, name string) (any, bool) {
+	for key, value := range values {
+		if strings.EqualFold(strings.TrimSpace(key), strings.TrimSpace(name)) {
+			return value, true
+		}
+	}
+	return nil, false
+}

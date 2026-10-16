@@ -1,0 +1,70 @@
+/* ---------- 表格浮层化（原版风格：内容直接浮在窗口 Mica 上） ----------
+ * antd Table 的 colorBgContainer 保持 #fff（供选中态叠加计算），
+ * 这里在 CSS 层把表格容器与数据行显式透明。 */
+.ant-table-wrapper .ant-table {
+  background: transparent;
+}
+.ant-table-wrapper .ant-table-tbody > tr > td {
+  background: transparent;
+}
+.ant-table-wrapper .ant-table-tbody > tr.ant-table-row-selected > td {
+  background: var(--fill-subtle);
+}
+
+/* ---------- fixed 列（如操作列）：半透明毛玻璃底 ----------
+ * 按 Win12 规范用 rgba 半透明底贴合毛玻璃风格（不用实色竖条）；
+ * 注：不用 backdrop-filter——td 处于表格滚动合成层内时 Chromium 的
+ * backdrop 采样会渲染成纯黑块（实测踩坑）；也不用全透明——横向滚动时
+ * fixed 列下方滑过的文字会透出来叠字。取 0.85 高不透明度 rgba 兼顾两者。 */
+.ant-table-wrapper .ant-table-tbody > tr > td.ant-table-cell-fix-left,
+.ant-table-wrapper .ant-table-tbody > tr > td.ant-table-cell-fix-right,
+.ant-table-wrapper .ant-table-thead > tr > th.ant-table-cell-fix-left,
+.ant-table-wrapper .ant-table-thead > tr > th.ant-table-cell-fix-right {
+  background: var(--cell-frost) !important;
+  border-inline-end: none !important; /* 无竖向分割线（与全局表格规范一致） */
+}
+/* 选中行的 fixed 单元格：选中色叠加在毛玻璃底上（rgba 层叠仍为半透明） */
+.ant-table-wrapper .ant-table-tbody > tr.ant-table-row-selected > td.ant-table-cell-fix-left,
+.ant-table-wrapper .ant-table-tbody > tr.ant-table-row-selected > td.ant-table-cell-fix-right {
+  background: linear-gradient(var(--fill-subtle), var(--fill-subtle)), var(--cell-frost) !important;
+}
+/* 行 hover 时 fixed 单元格跟随变亮：--fill-subtle 用 linear-gradient 叠在
+ * 毛玻璃底上（不引入 backdrop-filter，也不改回实底） */
+.ant-table-wrapper .ant-table-tbody > tr:hover > td.ant-table-cell-fix-left,
+.ant-table-wrapper .ant-table-tbody > tr:hover > td.ant-table-cell-fix-right {
+  background: linear-gradient(var(--fill-subtle), var(--fill-subtle)), var(--cell-frost) !important;
+}
+
+/* ---------- 分页器：透明浮在 Mica 上（去掉白底块） ---------- */
+.ant-pagination .ant-pagination-item,
+.ant-pagination .ant-pagination-prev .ant-pagination-item-link,
+.ant-pagination .ant-pagination-next .ant-pagination-item-link {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.ant-pagination .ant-pagination-item:hover,
+.ant-pagination .ant-pagination-prev:hover .ant-pagination-item-link,
+.ant-pagination .ant-pagination-next:hover .ant-pagination-item-link {
+  background: var(--hover-b);
+  border-color: transparent;
+}
+.ant-pagination .ant-pagination-item-active {
+  background: var(--hover-b);
+}
+
+
+
+/* ---------- 搜索框内嵌图标（suffix 形态，原版一体式搜索框） ---------- */
+.suf-ico {
+  color: var(--txt3);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  transition: color 100ms, background 100ms;
+}
+.suf-ico:hover {
+  color: var(--txt1);
+  background: var(--fill-subtle);
+}
+

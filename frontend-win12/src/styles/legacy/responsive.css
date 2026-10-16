@@ -1,0 +1,14 @@
+/* 其余应用保留既有移动规则，样板的窄窗口适配位于 design 和业务容器中。 */
+html, body { overscroll-behavior: none; }
+@media (max-width: 767px) {
+  * { -webkit-tap-highlight-color: transparent; }
+  body { touch-action: manipulation; }
+  .toolbar .sep, .toolbar .divider { display: none !important; }
+  .ant-modal { max-width: calc(100vw - 16px); margin: 8px auto; }
+  .ant-modal .ant-modal-content { padding: 16px; }
+  .ant-table-tbody .ant-btn-sm { min-width: 32px; min-height: 32px; }
+  .ant-modal .mp-grid, .ant-modal .mp-grid.three, .ant-modal .mp-grid.two { grid-template-columns: 1fr 1fr; }
+  .ant-modal .frow { flex-wrap: wrap; row-gap: 6px; }
+  .ant-modal code { word-break: break-all; }
+  .adm-h1 { font-size: 24px; }
+}

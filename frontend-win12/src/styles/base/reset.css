@@ -1,0 +1,62 @@
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  /* 开机/过渡期保持黑底（原版同为黑），避免露白闪烁 */
+  background: #000;
+  font-family: 'Segoe UI', 'Segoe UI Variable Text', 'Microsoft YaHei', system-ui, sans-serif;
+  color: var(--text);
+  /* [修复] 桌面壳（壁纸/图标/任务栏）默认禁选以模拟 OS；应用窗口内容必须可选，
+     否则本地密钥、表格、日志等文字无法复制（用户反馈） */
+  user-select: none;
+  transition: color 200ms;
+}
+
+/* 应用窗口内容允许选中复制 */
+.w12-win {
+  user-select: text;
+}
+
+/* antd 弹层（modal/select 下拉/dropdown）teleport 到 body 外，不在 .w12-win 内，需单独放开 */
+.ant-modal,
+.ant-select-dropdown,
+.ant-dropdown,
+.ant-message,
+.ant-popover {
+  user-select: text;
+}
+
+/* 窗口标题栏是拖拽区，保持禁选（避免拖动时误选文字） */
+.w12-titbar {
+  user-select: none;
+}
+
+/* 输入控件在任何层级都可选中编辑 */
+input,
+textarea {
+  user-select: text;
+}
+
+img {
+  -webkit-user-drag: none;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #88888860;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+

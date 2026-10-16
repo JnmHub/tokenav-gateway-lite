@@ -1,0 +1,10 @@
+/* 数据行和固定列都用同一遮挡材料；固定列不能透出横向滚动的文字。 */
+:root .w12-design .w12-table .ant-table, :root .w12-design .w12-table .ant-table-container { background: var(--w12-table); border: 0; border-radius: 0; }
+:root .w12-design .w12-table .ant-table-thead > tr > th { height: 40px; padding-block: 8px; font-weight: 500; background: var(--w12-table) !important; border-bottom: 1px solid var(--w12-border); border-inline-end: 0 !important; }
+:root .w12-design .w12-table .ant-table-thead > tr > th::before { display: none; }
+:root .w12-design .w12-table .ant-table-tbody > tr > td { min-height: 40px; height: 40px; padding-block: 8px; vertical-align: middle; border-inline-end: 0 !important; background: var(--w12-table) !important; }
+:root .w12-design .w12-table .ant-table-tbody > tr:hover > td, :root .w12-design .w12-table .ant-table-tbody > tr > td.ant-table-cell-row-hover { background: var(--w12-table-hover) !important; }
+:root .w12-design .w12-table .ant-table-tbody > tr.ant-table-row-selected > td { background: var(--w12-table-selected) !important; }
+:root .w12-design .w12-table .ant-table-cell-fix-right-first::after, :root .w12-design .w12-table .ant-table-cell-fix-left-last::after { box-shadow: none !important; border: 0; }
+:root .w12-design .w12-table .ant-table-expanded-row > td { background: var(--w12-table) !important; }
+:root .w12-design .w12-table .ant-table-pagination { margin-bottom: 0; }

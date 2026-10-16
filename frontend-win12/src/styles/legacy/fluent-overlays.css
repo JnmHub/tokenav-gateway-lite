@@ -1,0 +1,102 @@
+/* ---------- 下拉/弹层：Acrylic + 选中项左侧胶囊条 ---------- */
+.ant-select-dropdown,
+.ant-dropdown .ant-dropdown-menu,
+.ant-picker-dropdown .ant-picker-panel,
+.ant-picker-panel-container {
+  background: rgba(252, 252, 252, 0.88) !important;
+  backdrop-filter: blur(30px) saturate(1.25);
+  -webkit-backdrop-filter: blur(30px) saturate(1.25);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: var(--r-panel) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14) !important;
+}
+
+:root.dark .ant-select-dropdown,
+:root.dark .ant-dropdown .ant-dropdown-menu,
+:root.dark .ant-picker-dropdown .ant-picker-panel,
+:root.dark .ant-picker-panel-container {
+  background: rgba(40, 40, 40, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.07);
+}
+
+/* 自定义 overlay（非 a-menu 的 div 面板，如账号管理「显示列」「自动刷新」勾选菜单）：
+ * 不带 .ant-dropdown-menu 类，上面的弹层材质规则罩不到，默认只有半透明
+ * var(--card) 底，浮在表格上时内容全部透出重叠（用户反馈「下拉框直接看不清」）。
+ * 统一给 .ant-dropdown 下非菜单的直接子元素同材质亚克力底 */
+.ant-dropdown > div:not(.ant-dropdown-menu) {
+  background: rgba(252, 252, 252, 0.88) !important;
+  backdrop-filter: blur(30px) saturate(1.25);
+  -webkit-backdrop-filter: blur(30px) saturate(1.25);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: var(--r-panel) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14) !important;
+}
+:root.dark .ant-dropdown > div:not(.ant-dropdown-menu) {
+  background: rgba(40, 40, 40, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.07);
+}
+
+.ant-select-item,
+.ant-dropdown-menu-item {
+  border-radius: 4px !important;
+  margin: 0 4px;
+  transition: background 0.1s;
+}
+
+.ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  position: relative;
+}
+
+.ant-select-item-option-selected:not(.ant-select-item-option-disabled)::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+.ant-dropdown-menu-item-selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+/* ---------- 弹窗/抽屉：8px 圆角 + Acrylic ---------- */
+.ant-modal .ant-modal-content {
+  border-radius: var(--r-panel);
+  background: rgba(252, 252, 252, 0.96);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14), 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+:root.dark .ant-modal .ant-modal-content {
+  background: rgba(36, 36, 36, 0.97);
+}
+
+.ant-modal .ant-modal-header {
+  background: transparent;
+}
+
+.ant-modal .ant-modal-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--txt1);
+}
+
+.ant-drawer .ant-drawer-content {
+  background: rgba(248, 248, 248, 0.97);
+}
+
+:root.dark .ant-drawer .ant-drawer-content {
+  background: rgba(32, 32, 32, 0.97);
+}
+

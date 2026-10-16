@@ -1,0 +1,6 @@
+/* 新设计系统仅作用于已迁移样板，其他应用逐模块验收后接入。 */
+@import './tokens.css';
+@import './controls.css';
+@import './layouts.css';
+@import './tables.css';
+@import './dialogs.css';

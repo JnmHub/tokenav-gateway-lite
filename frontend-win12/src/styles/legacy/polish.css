@@ -1,0 +1,60 @@
+
+/* 浮出层统一为亚克力毛玻璃（与右键菜单同材质） */
+.ant-select-dropdown,
+.ant-dropdown .ant-dropdown-menu,
+.ant-picker-dropdown .ant-picker-panel-container,
+.ant-popover .ant-popover-inner {
+  background: var(--ctx) !important;
+  backdrop-filter: blur(40px) saturate(2);
+  -webkit-backdrop-filter: blur(40px) saturate(2);
+  border: 1px solid #99999950;
+}
+
+.ant-dropdown .ant-dropdown-menu {
+  border-radius: 10px;
+}
+
+/* 表头：小号加粗 + 字距，Windows 风格列头 */
+.ant-table-wrapper .ant-table-thead > tr > th {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.ant-table-wrapper .ant-table-pagination.ant-pagination {
+  margin-bottom: 0;
+}
+
+/* 弹窗标题栏留白贴近 Windows 对话框 */
+.ant-modal .ant-modal-content {
+  padding: 20px 24px;
+}
+
+.ant-modal .ant-modal-header {
+  margin-bottom: 14px;
+}
+
+/* 消息提示悬浮在 Dock 上方一些 */
+.ant-message {
+  z-index: 9600 !important;
+}
+
+/* ==================== 管理应用统一页头（与设置页同风格） ==================== */
+
+.adm-head {
+  margin: 2px 0 16px;
+}
+
+.adm-h1 {
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.adm-sub {
+  font-size: 12.5px;
+  color: var(--text2);
+  margin-top: 3px;
+}
+
+/* ==================== 移动端适配（≤768px 竖屏手机） ==================== */

@@ -1,0 +1,129 @@
+/* ============================================================
+ * 案 B · 靛夜云母（data-style="indigo"）
+ * ------------------------------------------------------------
+ * 气质：哑光靛紫 —— 低饱和靛色画布偏冷紫、哑光（弱玻璃）、低对比、紧凑圆角，
+ *       用靛色细描边与靛色淡填充代替投影，整体像一层磨砂云母。
+ * 与其它四案的区分轴（浅色下尤其明显）：
+ *   画布＝淡靛紫有彩底 / 卡片＝白 + 靛色描边 / 投影＝靛调极浅 / 圆角＝紧凑 10px / 玻璃＝最弱（哑光）
+ * ============================================================ */
+
+/* —— Light 令牌 —— */
+:root[data-style="indigo"] {
+  --text: #1b1d2b;
+  --text2: #5b5f7a;
+  --dicon-icon: #3a3f63;
+  --dicon-fg: #1b1d2b;
+  --dicon-shadow: 0 1px 2px #fff6, 0 0 3px #fff4;
+  --bg50: rgba(244, 245, 252, 0.86);
+  --bg70: rgba(246, 247, 253, 0.9);
+  --unfoc: #eceffa;
+  --card: rgba(255, 255, 255, 0.7);
+  --surface: #fbfbff;
+  --ctx: rgba(246, 247, 253, 0.94);
+  --contextmeu: rgba(246, 247, 253, 0.94);
+  --hover: rgba(94, 106, 210, 0.06);
+  --hover-b: rgba(94, 106, 210, 0.1);
+  --hr: rgba(94, 106, 210, 0.14);
+  --shadow: rgba(52, 56, 120, 0.18);
+  --s3d: rgba(52, 56, 120, 0.08);
+  --radius: 10px;
+  --radius-l: 14px;
+  --theme-1: #5e6ad2;
+  --theme-2: #7b85e8;
+  --accent: #5e6ad2;
+  --accent-hover: #6d79e0;
+  --accent-pressed: #4b56bf;
+  --txt1: rgba(20, 22, 40, 0.9);
+  --txt2: rgba(20, 22, 40, 0.6);
+  --txt3: rgba(20, 22, 40, 0.45);
+  --fill-subtle: rgba(94, 106, 210, 0.05);
+  --fill-press: rgba(94, 106, 210, 0.1);
+  --stroke-ctl: rgba(94, 106, 210, 0.2);
+  --stroke-card: rgba(94, 106, 210, 0.16);
+  --card-solid: #fbfaff;
+  --cell-solid: #f4f5fd;
+  --cell-frost: rgba(247, 248, 253, 0.92);
+  --r-ctl: 6px;
+  --r-panel: 10px;
+}
+
+/* —— Dark 令牌 —— */
+:root[data-style="indigo"].dark {
+  --text: #e9eaf6;
+  --text2: #b9bdd6;
+  --dicon-icon: #dfe2f5;
+  --dicon-fg: #e9eaf6;
+  --dicon-shadow: 0 1px 2px #000000a6, 0 0 3px #00000073;
+  --bg50: rgba(18, 19, 26, 0.78);
+  --bg70: rgba(20, 21, 30, 0.9);
+  --unfoc: #14151b;
+  --card: rgba(26, 28, 42, 0.72);
+  --surface: #14161f;
+  --ctx: rgba(24, 26, 40, 0.94);
+  --contextmeu: rgba(24, 26, 40, 0.94);
+  --hover: rgba(139, 147, 238, 0.08);
+  --hover-b: rgba(139, 147, 238, 0.14);
+  --hr: rgba(139, 147, 238, 0.16);
+  --shadow: rgba(0, 0, 0, 0.55);
+  --s3d: rgba(0, 0, 0, 0.4);
+  --theme-1: #5e6ad2;
+  --theme-2: #8b93ee;
+  --accent: #8b93ee;
+  --accent-hover: #9aa1f2;
+  --accent-pressed: #6d76e0;
+  --txt1: rgba(240, 241, 250, 0.95);
+  --txt2: rgba(240, 241, 250, 0.62);
+  --txt3: rgba(240, 241, 250, 0.45);
+  --fill-subtle: rgba(139, 147, 238, 0.07);
+  --fill-press: rgba(139, 147, 238, 0.12);
+  --stroke-ctl: rgba(139, 147, 238, 0.22);
+  --stroke-card: rgba(139, 147, 238, 0.18);
+  --card-solid: #1a1c2a;
+  --cell-solid: #16182a;
+  --cell-frost: rgba(22, 24, 40, 0.92);
+}
+
+/* —— 材质：哑光云母（弱玻璃，本套标志性特征）—— */
+:root[data-style="indigo"] .w12-win {
+  border-color: #5e6ad233;
+}
+:root[data-style="indigo"] .w12-win.foc {
+  backdrop-filter: blur(18px) saturate(1.05) contrast(0.98);
+  -webkit-backdrop-filter: blur(18px) saturate(1.05) contrast(0.98);
+}
+:root[data-style="indigo"].dark .w12-win {
+  border-color: #8b93ee2e;
+}
+:root[data-style="indigo"].dark .w12-win.foc {
+  backdrop-filter: blur(14px) saturate(1.1) contrast(0.96);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1) contrast(0.96);
+}
+
+/* —— 弹层：哑光高实度（弱模糊，靠靛色描边分层）—— */
+:root[data-style="indigo"] .ant-select-dropdown,
+:root[data-style="indigo"] .ant-dropdown .ant-dropdown-menu,
+:root[data-style="indigo"] .ant-picker-dropdown .ant-picker-panel,
+:root[data-style="indigo"] .ant-picker-panel-container,
+:root[data-style="indigo"] .ant-dropdown > div:not(.ant-dropdown-menu) {
+  background: rgba(249, 250, 254, 0.96) !important;
+  backdrop-filter: blur(18px) saturate(1.05);
+  -webkit-backdrop-filter: blur(18px) saturate(1.05);
+  border: 1px solid rgba(94, 106, 210, 0.18);
+  box-shadow: 0 8px 22px rgba(52, 56, 120, 0.16) !important;
+}
+:root[data-style="indigo"].dark .ant-select-dropdown,
+:root[data-style="indigo"].dark .ant-dropdown .ant-dropdown-menu,
+:root[data-style="indigo"].dark .ant-picker-dropdown .ant-picker-panel,
+:root[data-style="indigo"].dark .ant-picker-panel-container,
+:root[data-style="indigo"].dark .ant-dropdown > div:not(.ant-dropdown-menu) {
+  background: rgba(26, 28, 42, 0.96) !important;
+  border-color: rgba(139, 147, 238, 0.2);
+}
+
+/* —— 分层策略：卡片用靛色细描边浮起，投影压到几乎不可见 —— */
+:root[data-style="indigo"] .wp-card {
+  box-shadow: 0 1px 0 rgba(94, 106, 210, 0.06);
+}
+:root[data-style="indigo"].dark .wp-card {
+  box-shadow: 0 1px 0 rgba(139, 147, 238, 0.08);
+}

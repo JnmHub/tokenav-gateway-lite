@@ -1,0 +1,52 @@
+/* ============================================================
+ * Fluent 2（Windows 11）深度覆盖层 + 布局原语
+ * 官方规格要点：
+ * - 强调色 #005FB8，hover 提亮 / pressed 加深，无外阴影
+ * - 控件圆角 4px；面板（弹窗/下拉/抽屉）8px
+ * - standard 按钮：白 70% 底 + rgba(0,0,0,.10) 描边；hover rgba(0,0,0,.037)；
+ *   pressed rgba(0,0,0,.06) 且文字转次要色
+ * - 输入控件 focus：底部 2px 强调色条（Win11 标志）
+ * - 下拉/弹层：Acrylic 白 85% + blur(30px) saturate(120%)，选中项左侧 3px 胶囊条
+ * - 内容层 Mica：半透明让壁纸透出（该层由 AppWindow 内容容器承载）
+ * - 表格：无竖线、表头 12px/500、行 hover .037
+ * - 布局原语：wp-page / wp-header / wp-toolbar(分组+分隔) / wp-card / wp-form 行
+ * ============================================================ */
+
+:root {
+  /* 强调色回归 win12-online 原版：theme-2 蓝（此前为 Fluent #005FB8） */
+  --accent: #3b91d8;
+  --accent-hover: #4da3e0;
+  --accent-pressed: #2f7cb8;
+  --txt1: rgba(0, 0, 0, 0.9);
+  --txt2: rgba(0, 0, 0, 0.6);
+  --txt3: rgba(0, 0, 0, 0.45);
+  --fill-subtle: rgba(0, 0, 0, 0.037);
+  --fill-press: rgba(0, 0, 0, 0.06);
+  --stroke-ctl: rgba(0, 0, 0, 0.1);
+  --stroke-card: rgba(0, 0, 0, 0.08);
+  /* 卡片回归原版半透（原版 --card #efefef75），不再用白实底 */
+  --card-solid: rgba(239, 239, 239, 0.75);
+  --cell-solid: #f2f2f2;
+  /* fixed 列（操作列）毛玻璃底：高不透明度 rgba，兼顾问毛玻璃观感与横向滚动遮蔽 */
+  --cell-frost: rgba(242, 242, 242, 0.85);
+  /* 圆角回归原版尺度（radius-md / radius-2xl） */
+  --r-ctl: 6px;
+  --r-panel: 10px;
+}
+
+:root.dark {
+  --accent: #4aa3e8;
+  --accent-hover: #5db1ee;
+  --accent-pressed: #3b91d8;
+  --txt1: rgba(255, 255, 255, 0.95);
+  --txt2: rgba(255, 255, 255, 0.6);
+  --txt3: rgba(255, 255, 255, 0.45);
+  --fill-subtle: rgba(255, 255, 255, 0.045);
+  --fill-press: rgba(255, 255, 255, 0.08);
+  --stroke-ctl: rgba(255, 255, 255, 0.12);
+  --stroke-card: rgba(255, 255, 255, 0.07);
+  --card-solid: rgba(80, 80, 80, 0.5);
+  --cell-solid: #2b2b2b;
+  --cell-frost: rgba(43, 43, 43, 0.85);
+}
+

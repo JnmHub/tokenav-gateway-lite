@@ -1,0 +1,34 @@
+/* 带 w12-design 的页面与所属弹层使用同一控件参数。 */
+:root .w12-design .ant-btn, :root .w12-design.ant-btn {
+  height: 32px; padding: 0 12px; border-radius: 8px; font-weight: 400; box-shadow: none;
+  border: 1px solid var(--w12-border); background: transparent; color: var(--w12-fg);
+}
+:root .w12-design .ant-btn:not(:disabled):hover, :root .w12-design.ant-btn:not(:disabled):hover { background: var(--w12-hover); border-color: var(--w12-border); color: var(--w12-fg); }
+:root .w12-design .ant-btn:not(:disabled):active, :root .w12-design.ant-btn:not(:disabled):active { background: var(--w12-hover); }
+:root .w12-design .ant-btn-primary, :root .w12-design.ant-btn-primary {
+  height: 36px; padding: 0 16px; color: #fff; background: color-mix(in srgb, var(--accent) 86%, transparent); border-color: var(--accent);
+}
+:root .w12-design .ant-btn-primary:not(:disabled):hover, :root .w12-design.ant-btn-primary:not(:disabled):hover { color: #fff; background: color-mix(in srgb, var(--accent) 94%, transparent); border-color: var(--accent); }
+:root .w12-design .ant-btn-sm, :root .w12-design.ant-btn-sm { height: 28px; padding: 0 8px; }
+:root .w12-design .ant-btn-dangerous, :root .w12-design.ant-btn-dangerous { color: var(--w12-danger); border-color: color-mix(in srgb, var(--w12-danger) 40%, transparent); background: transparent; }
+:root .w12-design .ant-btn-dangerous:not(:disabled):hover { color: var(--w12-danger); background: color-mix(in srgb, var(--w12-danger) 8%, transparent); }
+:root .w12-design .ant-btn-text { border-color: transparent; }
+:root .w12-design .ant-input, :root .w12-design .ant-input-affix-wrapper, :root .w12-design .ant-input-number,
+:root .w12-design .ant-picker, :root .w12-design .ant-select:not(.ant-select-customize-input) .ant-select-selector {
+  border-radius: 8px !important; min-height: 32px; border: 1px solid var(--w12-border) !important;
+  background: var(--w12-control) !important; color: var(--w12-fg); box-shadow: none !important;
+}
+:root .w12-design .ant-input-affix-wrapper input { border: 0 !important; min-height: 0; padding: 0; background: transparent !important; }
+:root .w12-design .ant-input-number-input { height: 30px; }
+:root .w12-design .ant-input:hover, :root .w12-design .ant-input-affix-wrapper:hover, :root .w12-design .ant-input-number:hover,
+:root .w12-design .ant-select:not(.ant-select-disabled):hover .ant-select-selector { border-color: color-mix(in srgb, var(--w12-fg) 24%, transparent) !important; }
+:root .w12-design .ant-input:focus, :root .w12-design .ant-input-affix-wrapper-focused, :root .w12-design .ant-input-number-focused,
+:root .w12-design .ant-select-focused .ant-select-selector, :root .w12-design .ant-picker-focused { border-color: var(--accent) !important; box-shadow: none !important; }
+:root .w12-design .ant-input { padding-inline: 12px; }
+:root .w12-design textarea.ant-input { min-height: 64px; padding: 8px 12px; }
+.w12-status { min-height: 20px; display: inline-flex; align-items: center; border-radius: 4px; padding: 0 8px; font-size: 12px; color: var(--w12-muted); background: var(--w12-hover); }
+.w12-status.success { color: var(--w12-success); background: color-mix(in srgb, var(--w12-success) 12%, transparent); }
+.w12-status.error { color: var(--w12-danger); background: color-mix(in srgb, var(--w12-danger) 12%, transparent); }
+.w12-status.info { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.w12-design button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (pointer: coarse) { :root .w12-design .ant-btn-sm { min-height: 32px; min-width: 32px; } }

@@ -1,0 +1,58 @@
+/* ---------- Tabs：Win11 底部 3px 圆头下划线 ---------- */
+.ant-tabs .ant-tabs-tab {
+  padding: 8px 4px;
+  margin-left: 16px;
+  color: var(--txt2);
+}
+
+.ant-tabs .ant-tabs-tab:first-child {
+  margin-left: 0;
+}
+
+.ant-tabs .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: var(--txt1);
+  font-weight: 600;
+}
+
+.ant-tabs .ant-tabs-ink-bar {
+  background: var(--accent);
+  height: 3px !important;
+  border-radius: 2px 2px 0 0;
+}
+
+.ant-tabs-top > .ant-tabs-nav::before {
+  border-bottom-color: var(--stroke-card) !important;
+}
+
+/* ---------- Segmented：Win11 分段控件 ---------- */
+.ant-segmented {
+  border-radius: var(--r-ctl);
+  border: 1px solid var(--stroke-ctl);
+  background: rgba(255, 255, 255, 0.55);
+  padding: 2px;
+}
+
+:root.dark .ant-segmented {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.ant-segmented .ant-segmented-item {
+  border-radius: 3px;
+}
+
+.ant-segmented .ant-segmented-item-selected {
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+:root.dark .ant-segmented .ant-segmented-item-selected {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.ant-segmented .ant-segmented-thumb {
+  border-radius: 3px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+

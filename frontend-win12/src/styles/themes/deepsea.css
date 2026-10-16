@@ -1,0 +1,129 @@
+/* ============================================================
+ * 案 E · 深海商务（data-style="deepsea"）
+ * ------------------------------------------------------------
+ * 气质：群青深海 —— 蓝调画布、最厚的玻璃（blur 最大）、最大的圆角、卡片靠深投影浮起，
+ *       强调色是偏紫的商务靛蓝。整体像一张放在深海背景上的浮起卡片面板。
+ * 与其它四案的区分轴（浅色下尤其明显）：
+ *   画布＝淡蓝有彩底 / 卡片＝白 + 几乎无描边但投影最深 / 圆角＝最大 16px / 玻璃＝最厚
+ * ============================================================ */
+
+/* —— Light 令牌 —— */
+:root[data-style="deepsea"] {
+  --text: #10213c;
+  --text2: #4c5f7d;
+  --dicon-icon: #1c3358;
+  --dicon-fg: #10213c;
+  --dicon-shadow: 0 1px 2px #ffffffe0, 0 0 3px #ffffffb3;
+  --bg50: rgba(243, 247, 253, 0.8);
+  --bg70: rgba(246, 249, 253, 0.86);
+  --unfoc: #e6eefb;
+  --card: rgba(255, 255, 255, 0.68);
+  --surface: #fafdff;
+  --ctx: rgba(246, 249, 254, 0.94);
+  --contextmeu: rgba(246, 249, 254, 0.94);
+  --hover: rgba(99, 91, 255, 0.06);
+  --hover-b: rgba(99, 91, 255, 0.1);
+  --hr: rgba(35, 58, 120, 0.14);
+  --shadow: rgba(31, 56, 116, 0.24);
+  --s3d: rgba(31, 56, 116, 0.12);
+  --radius: 16px;
+  --radius-l: 20px;
+  --theme-1: #635bff;
+  --theme-2: #6f8dff;
+  --accent: #635bff;
+  --accent-hover: #7269ff;
+  --accent-pressed: #5248e0;
+  --txt1: rgba(10, 24, 46, 0.92);
+  --txt2: rgba(10, 24, 46, 0.6);
+  --txt3: rgba(10, 24, 46, 0.45);
+  --fill-subtle: rgba(99, 91, 255, 0.055);
+  --fill-press: rgba(99, 91, 255, 0.11);
+  --stroke-ctl: rgba(35, 58, 120, 0.16);
+  --stroke-card: rgba(35, 58, 120, 0.08);
+  --card-solid: #f9fcff;
+  --cell-solid: #f3f8ff;
+  --cell-frost: rgba(247, 250, 254, 0.9);
+  --r-ctl: 10px;
+  --r-panel: 12px;
+}
+
+/* —— Dark 令牌 —— */
+:root[data-style="deepsea"].dark {
+  --text: #eaf2ff;
+  --text2: #a9bdd9;
+  --dicon-icon: #e6efff;
+  --dicon-fg: #eaf2ff;
+  --dicon-shadow: 0 1px 2px #000000a6, 0 0 3px #00000073;
+  --bg50: rgba(10, 30, 56, 0.8);
+  --bg70: rgba(12, 34, 64, 0.86);
+  --unfoc: #0c2440;
+  --card: rgba(18, 41, 74, 0.72);
+  --surface: #0e2744;
+  --ctx: rgba(16, 40, 72, 0.94);
+  --contextmeu: rgba(16, 40, 72, 0.94);
+  --hover: rgba(143, 136, 255, 0.09);
+  --hover-b: rgba(143, 136, 255, 0.15);
+  --hr: rgba(143, 136, 255, 0.14);
+  --shadow: rgba(0, 8, 24, 0.6);
+  --s3d: rgba(0, 8, 24, 0.5);
+  --theme-1: #635bff;
+  --theme-2: #8f88ff;
+  --accent: #8f88ff;
+  --accent-hover: #9e98ff;
+  --accent-pressed: #7269ff;
+  --txt1: rgba(234, 243, 255, 0.95);
+  --txt2: rgba(234, 243, 255, 0.64);
+  --txt3: rgba(234, 243, 255, 0.46);
+  --fill-subtle: rgba(143, 136, 255, 0.08);
+  --fill-press: rgba(143, 136, 255, 0.14);
+  --stroke-ctl: rgba(143, 136, 255, 0.2);
+  --stroke-card: rgba(143, 136, 255, 0.14);
+  --card-solid: #12294a;
+  --cell-solid: #102343;
+  --cell-frost: rgba(16, 35, 67, 0.92);
+}
+
+/* —— 材质：最厚玻璃（本套标志性特征）—— */
+:root[data-style="deepsea"] .w12-win {
+  border-color: #233a7840;
+}
+:root[data-style="deepsea"] .w12-win.foc {
+  backdrop-filter: blur(28px) saturate(1.4) contrast(0.94);
+  -webkit-backdrop-filter: blur(28px) saturate(1.4) contrast(0.94);
+}
+:root[data-style="deepsea"].dark .w12-win {
+  border-color: #8f88ff33;
+}
+:root[data-style="deepsea"].dark .w12-win.foc {
+  backdrop-filter: blur(30px) saturate(1.5) contrast(0.9);
+  -webkit-backdrop-filter: blur(30px) saturate(1.5) contrast(0.9);
+}
+
+/* —— 弹层：厚亚克力 + 12px 面板圆角 + 深投影 —— */
+:root[data-style="deepsea"] .ant-select-dropdown,
+:root[data-style="deepsea"] .ant-dropdown .ant-dropdown-menu,
+:root[data-style="deepsea"] .ant-picker-dropdown .ant-picker-panel,
+:root[data-style="deepsea"] .ant-picker-panel-container,
+:root[data-style="deepsea"] .ant-dropdown > div:not(.ant-dropdown-menu) {
+  background: rgba(250, 252, 255, 0.88) !important;
+  backdrop-filter: blur(28px) saturate(1.35);
+  -webkit-backdrop-filter: blur(28px) saturate(1.35);
+  border: 1px solid rgba(35, 58, 120, 0.1);
+  box-shadow: 0 12px 32px rgba(31, 56, 116, 0.2) !important;
+}
+:root[data-style="deepsea"].dark .ant-select-dropdown,
+:root[data-style="deepsea"].dark .ant-dropdown .ant-dropdown-menu,
+:root[data-style="deepsea"].dark .ant-picker-dropdown .ant-picker-panel,
+:root[data-style="deepsea"].dark .ant-picker-panel-container,
+:root[data-style="deepsea"].dark .ant-dropdown > div:not(.ant-dropdown-menu) {
+  background: rgba(18, 41, 74, 0.94) !important;
+  border-color: rgba(143, 136, 255, 0.18);
+}
+
+/* —— 分层策略：卡片靠深投影浮起（与 A 的“无影靠描边”正好相反）—— */
+:root[data-style="deepsea"] .wp-card {
+  box-shadow: 0 6px 20px rgba(31, 56, 116, 0.12);
+}
+:root[data-style="deepsea"].dark .wp-card {
+  box-shadow: 0 6px 20px rgba(0, 8, 24, 0.45);
+}

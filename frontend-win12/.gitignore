@@ -1,0 +1,6 @@
+node_modules
+dist
+*.local
+.DS_Store
+# puppeteer 对照验证截图（可用 tools/shot-compare*.mjs 重新生成）
+tools/shots-compare

@@ -1,0 +1,93 @@
+services:
+  gateway:
+    build:
+      context: .
+      args:
+        COMMIT: ${SOURCE_COMMIT:-unknown}
+        BUILD_DATE: ${BUILD_DATE:-unknown}
+    restart: unless-stopped
+    stop_grace_period: 90s
+    ports:
+      - "${LISTEN_ADDR:-0.0.0.0}:${APP_PORT:-8080}:8080"
+    environment:
+      RUN_MODE: gateway-lite
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: "8080"
+      SERVER_MODE: release
+      DATA_DIR: /app/data
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_USER: gateway_lite
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?请通过 install.sh 生成数据库密码}
+      DATABASE_DBNAME: gateway_lite
+      DATABASE_SSLMODE: disable
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?请通过 install.sh 生成缓存密码}
+      REDIS_DB: "0"
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?请配置管理员邮箱}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?请通过 install.sh 生成管理员密码}
+      # Google OAuth 客户端凭据按需私密配置，公开镜像不内置固定值。
+      ANTIGRAVITY_OAUTH_CLIENT_ID: ${ANTIGRAVITY_OAUTH_CLIENT_ID:-}
+      ANTIGRAVITY_OAUTH_CLIENT_SECRET: ${ANTIGRAVITY_OAUTH_CLIENT_SECRET:-}
+      GEMINI_CLI_OAUTH_CLIENT_ID: ${GEMINI_CLI_OAUTH_CLIENT_ID:-}
+      GEMINI_CLI_OAUTH_CLIENT_SECRET: ${GEMINI_CLI_OAUTH_CLIENT_SECRET:-}
+      TZ: Asia/Shanghai
+    volumes:
+      - type: bind
+        source: ${GATEWAY_DATA_DIR:?请配置持久化数据目录}
+        target: /app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gateway_lite
+      POSTGRES_DB: gateway_lite
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请配置数据库密码}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gateway_lite -d gateway_lite"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?请配置缓存密码}
+    # 密码不放进宿主命令参数；容器内按单个参数传递，避免二次解析。
+    command: ["sh", "-c", "exec redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\""]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$REDIS_PASSWORD\" redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -1,0 +1,167 @@
+/* ============================================================
+ * 布局原语（wp- 前缀）：所有应用窗口内容统一用这套节奏
+ * ============================================================ */
+
+/* 页面容器：统一内容边距与滚动 */
+.wp-page {
+  padding: 14px 18px 20px;
+  height: 100%;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 页面头：大标题 + 说明 + 动作区 */
+.wp-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex: none;
+}
+
+.wp-header h1 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--txt1);
+  margin: 0;
+  letter-spacing: 0.2px;
+}
+
+.wp-header .wp-sub {
+  font-size: 12px;
+  color: var(--txt2);
+  margin-top: 2px;
+}
+
+/* 工具栏：动作组 | 筛选组 | 搜索组，组间分隔线 */
+.wp-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: none;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--stroke-card);
+}
+
+.wp-toolbar .sep {
+  width: 1px;
+  height: 20px;
+  background: var(--stroke-ctl);
+  margin: 0 4px;
+  flex: none;
+}
+
+.wp-toolbar .grow {
+  flex: 1;
+}
+
+/* 卡片：Fluent 层卡片 */
+.wp-card {
+  background: var(--card-solid);
+  border: 1px solid var(--stroke-card);
+  border-radius: var(--r-panel);
+  padding: 14px 16px;
+  flex: none;
+}
+
+.wp-card > .wp-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--txt1);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wp-card > .wp-card-title .aux {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--txt2);
+}
+
+/* 表单行：标签列固定宽右对齐 + 控件列（Fluent Settings 布局） */
+.wp-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.wp-form .frow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.wp-form .frow:hover {
+  background: var(--fill-subtle);
+}
+
+.wp-form .frow > .flabel {
+  flex: none;
+  width: 168px;
+  text-align: right;
+  color: var(--txt2);
+  font-size: 13px;
+}
+
+.wp-form .frow > .fctl {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.wp-form .frow > .fctl .hint {
+  font-size: 12px;
+  color: var(--txt3);
+}
+
+/* 区块间水平分割线 */
+.wp-hr {
+  height: 1px;
+  background: var(--stroke-card);
+  border: none;
+  margin: 4px 0;
+  flex: none;
+}
+
+/* 次要说明文字 */
+.wp-note {
+  font-size: 12px;
+  color: var(--txt2);
+  line-height: 1.5;
+}
+
+/* 空状态 */
+.wp-empty {
+  padding: 40px 0;
+  text-align: center;
+  color: var(--txt2);
+  font-size: 13px;
+}
+
+/* 移动端：收紧边距 */
+@media (max-width: 760px) {
+  .wp-page {
+    padding: 10px 12px 16px;
+  }
+
+  .wp-form .frow {
+    flex-wrap: wrap;
+  }
+
+  .wp-form .frow > .flabel {
+    width: auto;
+    text-align: left;
+  }
+}
+

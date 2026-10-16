@@ -1,0 +1,12 @@
+packages:
+  - '.'
+
+allowBuilds:
+  esbuild: true
+  vue-demi: true
+
+# pnpm 11 只从 workspace 根读取 overrides；同时保留 package.json 配置供旧版 pnpm 使用。
+overrides:
+  js-cookie: 3.0.7
+  form-data@<4.0.6: ">=4.0.6"
+  postcss@<8.5.18: ">=8.5.18"

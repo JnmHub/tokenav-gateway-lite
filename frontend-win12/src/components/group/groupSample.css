@@ -1,0 +1,25 @@
+/* 分组相关表单统一在样板弹窗内，子组件继续保留原字段和动作。 */
+:root .w12-dialog.group-edit-modal .g-collapse .ant-collapse-item { border: 0; }
+:root .w12-dialog.group-edit-modal .g-collapse .ant-collapse-header { font-size: 14px; font-weight: 500; padding: 12px 0 !important; border-bottom: 1px solid var(--w12-border); color: var(--w12-fg); }
+:root .w12-dialog.group-edit-modal .g-collapse .ant-collapse-content-box { padding: 16px 0 8px !important; }
+:root .w12-dialog.group-edit-modal .grid2 { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 16px; }
+:root .w12-dialog.group-edit-modal .grid3, :root .w12-dialog.group-edit-modal .mp-grid.three { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); }
+:root .w12-dialog.group-edit-modal .seg { max-width: 100%; display: flex; flex-wrap: wrap; gap: 4px; background: var(--w12-hover); box-shadow: none; }
+:root .w12-dialog.group-edit-modal .seg-btn { border-radius: 8px; min-height: 28px; box-shadow: none; }
+:root .w12-dialog.group-edit-modal .seg-btn.on { color: var(--accent); background: color-mix(in srgb,var(--accent) 10%,transparent); }
+:root .w12-dialog.group-edit-modal .ant-modal-content .card { background: var(--w12-hover); border: 1px solid transparent; box-shadow: none; }
+:root .w12-dialog.group-edit-modal .ant-modal-content .card.on { border-color: var(--accent); background: color-mix(in srgb,var(--accent) 10%,transparent); }
+:root .w12-dialog.group-edit-modal .ant-modal-content .frow { min-height: 56px; padding: 8px; background: transparent; border: 0; }
+:root .w12-dialog.group-edit-modal .ant-modal-content .frow:hover { background: var(--w12-hover); filter: none; }
+:root .w12-dialog.group-edit-modal .ant-modal-content .frow .ant-switch { flex: none; }
+:root .w12-dialog.group-edit-modal .ant-modal-content .tin:focus { box-shadow: none; border-color: var(--accent); }
+:root .w12-dialog .foot, :root .w12-dialog .addrow, :root .w12-dialog .batchrow, :root .w12-dialog .gbar { flex-wrap: wrap; }
+:root .w12-dialog .foot { position: sticky; bottom: -1px; padding: 12px 0 0; background: var(--w12-popup); }
+:root .w12-dialog .hint, :root .w12-dialog .frow-d { overflow-wrap: anywhere; }
+@container w12-dialog (max-width: 600px) {
+  :root .w12-dialog.group-edit-modal .grid2, :root .w12-dialog.group-edit-modal .grid3,
+  :root .w12-dialog.group-edit-modal .mp-grid, :root .w12-dialog.group-edit-modal .mp-grid.three,
+  :root .w12-dialog.group-edit-modal .mp-grid.two { grid-template-columns: minmax(0,1fr); }
+  :root .w12-dialog.group-edit-modal .mapping-row { flex-wrap: wrap; }
+  :root .w12-dialog.group-edit-modal .cards { grid-template-columns: minmax(0,1fr); }
+}

@@ -1,0 +1,17 @@
+.w12-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; padding-bottom: 12px; margin-bottom: 16px; border-bottom: 1px solid var(--w12-border); }
+.w12-toolbar-group { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.w12-toolbar-group.search { flex: 1; min-width: 180px; max-width: 320px; }
+.w12-toolbar-group.search .ant-input-affix-wrapper { width: 100%; }
+.w12-form-row { min-height: 40px; display: grid; grid-template-columns: 168px minmax(0,1fr); gap: 12px; align-items: center; padding: 4px 8px; border-radius: 8px; }
+.w12-form-row:hover { background: var(--w12-hover); }
+.w12-form-label { color: var(--w12-muted); font-size: 13px; font-weight: 400; text-align: right; }
+.w12-form-control { min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.w12-form-hint { flex-basis: 100%; color: var(--w12-muted); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.w12-empty { min-height: 160px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--w12-muted); font-size: 13px; text-align: center; padding: 16px; }
+.w12-empty > .anticon { font-size: 28px; }
+@container w12-app (max-width: 600px) {
+  .w12-toolbar { gap: 8px; }
+  .w12-toolbar-group.search { max-width: none; }
+  .w12-form-row { grid-template-columns: 1fr; gap: 8px; }
+  .w12-form-label { text-align: left; }
+}

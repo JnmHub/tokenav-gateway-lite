@@ -1,0 +1,129 @@
+/* ==================== Win11 原生风格层（弹窗/控件，2026-09 二次定稿） ====================
+ * 基准：Windows 11 设置应用深色模式——卡片 #2b2b2b 质感、大圆角、
+ * 无明显描边、亚克力遮罩、标题大字重、控件轻量无浮雕。 */
+
+/* 弹窗：圆角 8px 卡片底；标题大字号左上；遮罩亚克力 */
+.ant-modal .ant-modal-content {
+  border-radius: 8px;
+  padding: 20px 24px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28), 0 2px 6px rgba(0, 0, 0, 0.14);
+}
+
+/* ---------- 弹窗内层级重映射（关键修复） ----------
+ * 弹窗底是近白卡片，而弹窗内的行/卡片/分段控件/标签全都引用 --card
+ * （默认 #efefeff0 浅灰），于是「白底上叠满浅灰盒子」——层级无法区分，
+ * 这正是「看起来累、分不清」的根因。
+ *
+ * 这里在弹窗作用域内把 --card 重映射为「下沉一档的透明黑」，语义从
+ * 「一块灰底」变成「比容器更深的嵌入块」，形成
+ *   容器（白） > 嵌入块（浅灰） > 控件轨道（更深） > 选中项（白）
+ * 四级层次。好处：138 处 var(--card) 的组件零改动，全部弹窗自动生效。
+ *
+ * 选择器统一用 .ant-modal .ant-modal-content 前缀（3 类 = 权重 0,3,0）：
+ * 组件的 <style scoped> 生成 .cls[data-v-x]（权重 0,2,0），同权重时后注入的
+ * 组件样式会赢，必须提高一级才能稳定覆盖。 */
+.ant-modal .ant-modal-content {
+  --card: var(--surface-sunken);
+  --hr: var(--stroke-hairline);
+  --card-solid: var(--surface-card);
+  --cell-solid: var(--surface-card);
+}
+:root.dark .ant-modal .ant-modal-content {
+  --card: var(--surface-sunken);
+  --hr: var(--stroke-hairline);
+}
+
+/* 配置行（.frow / 侧栏式信息行）：Win11 设置应用的做法——行本身无底色，
+ * 靠行高、对齐与留白分组；hover 才轻微提亮。原实现每行一块灰底，
+ * 连续多行时形成「灰条阵列」，是视觉疲劳的主要来源。 */
+.ant-modal .ant-modal-content .frow {
+  background: transparent;
+  min-height: 44px;
+  padding: 10px 12px;
+  margin-bottom: 2px;
+}
+.ant-modal .ant-modal-content .frow:hover {
+  background: var(--hover-b);
+  filter: none;
+}
+
+/* 可选项卡片（调度规则三选一这类）：真卡片形态——白底 + hairline 描边，
+ * 选中用主题色描边 + 主题色浅底。原实现用硬编码 #4f6bed，与所选主题
+ * 强调色不匹配（如翠绿/靛紫案下仍是蓝），改回令牌。 */
+.ant-modal .ant-modal-content .card {
+  background: var(--surface-card);
+  border: 1px solid var(--stroke-hairline);
+  box-shadow: var(--elev-card);
+}
+.ant-modal .ant-modal-content .card:hover {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--stroke-hairline));
+  background: var(--surface-card);
+  box-shadow: var(--elev-card-hover);
+}
+.ant-modal .ant-modal-content .card.on,
+.ant-modal .ant-modal-content .card.on:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface-card));
+  box-shadow: var(--elev-card);
+}
+.ant-modal .ant-modal-content .card.on .card-t { color: var(--accent); }
+
+/* 分段控件（继承节点 / T0 / T1 / T2）：轨道下沉，选中项浮起为白胶囊。
+ * 原实现的选中态用 --bg70（近白半透），在白弹窗里几乎看不出差异。 */
+.ant-modal .ant-modal-content .seg {
+  background: var(--surface-inset);
+  padding: 3px;
+}
+.ant-modal .ant-modal-content .seg-btn {
+  border-radius: 6px;
+  padding: 6px 14px;
+  color: var(--text2);
+}
+.ant-modal .ant-modal-content .seg-btn:hover { color: var(--text); }
+.ant-modal .ant-modal-content .seg-btn.on {
+  background: var(--surface-card);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.07), inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* 原生输入（.tin）：白底 + hairline；聚焦用主题色细环 */
+.ant-modal .ant-modal-content .tin {
+  background: var(--surface-card);
+  border: 1px solid var(--stroke-hairline);
+}
+.ant-modal .ant-modal-content .tin:hover {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--stroke-hairline));
+}
+.ant-modal .ant-modal-content .tin:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.ant-modal .ant-modal-header { margin-bottom: 16px; }
+
+.ant-modal .ant-modal-title {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.ant-modal .ant-modal-footer { margin-top: 20px; }
+
+.ant-modal-wrap { backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+
+/* 弹窗内主按钮：Win11 强调色填充（默认按钮深灰描边由 antd 主题提供） */
+
+/* 开关：Win11 胶囊造型，圆角全弧 */
+.ant-switch {
+  border-radius: 999px;
+  min-width: 40px;
+  height: 20px;
+}
+
+/* 菜单/下拉：圆角 8px，去阴影浮雕 */
+.ant-dropdown .ant-dropdown-menu,
+.ant-select-dropdown .ant-select-item,
+.ant-menu.ant-menu-root {
+  border-radius: 8px;
+}
+

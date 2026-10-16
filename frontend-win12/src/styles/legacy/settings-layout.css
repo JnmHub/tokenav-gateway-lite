@@ -1,0 +1,310 @@
+
+.set-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+/* 左栏：头像 + 查找设置 + 导航 */
+.set-side {
+  width: 280px;
+  flex: none;
+  padding: 18px 10px 12px 18px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.set-user {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 6px 8px 16px;
+}
+
+.set-uname {
+  font-size: 15px;
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.set-uinfo {
+  font-size: 12px;
+  color: var(--text2);
+  margin-top: 2px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.set-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  border-radius: 17px;
+  background: var(--card);
+  padding: 0 14px;
+  border: 1.5px solid transparent;
+  transition: 100ms;
+  flex: none;
+}
+
+.set-search:focus-within {
+  border-color: var(--theme-2);
+}
+
+.set-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 13px;
+  font-family: inherit;
+  user-select: text;
+}
+
+.set-nav {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-right: 4px;
+}
+
+.set-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 6px;
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: background 100ms;
+}
+
+.set-nav-ico {
+  font-size: 16px;
+  display: flex;
+}
+
+.set-nav-item:hover {
+  background: var(--hover-b);
+}
+
+/* 原版选中态：左侧主题色指示条 + 高亮底 */
+.set-nav-item.on {
+  background: var(--hover-b);
+  font-weight: 600;
+}
+
+.set-nav-item.on::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--theme-2);
+}
+
+.set-main {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  padding: 16px 22px 20px 16px;
+}
+
+.set-h1 {
+  font-size: 26px;
+  font-weight: 600;
+  margin: 2px 0 16px;
+}
+
+/* 主页：设备标题行 */
+.set-device {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin: 4px 2px 20px;
+}
+
+.set-device-name {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.set-device-sub {
+  font-size: 12.5px;
+  color: var(--text2);
+  margin-top: 2px;
+}
+
+.set-link {
+  font-size: 12.5px;
+  color: var(--theme-2);
+  text-decoration: underline;
+  cursor: pointer;
+  display: inline-block;
+  margin-top: 4px;
+}
+
+/* 主页：双列卡片 */
+.set-grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.set-card-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.set-card-desc {
+  font-size: 12px;
+  color: var(--text2);
+  margin-top: 3px;
+  line-height: 1.6;
+}
+
+.set-approw {
+  display: flex;
+  gap: 14px;
+  margin: 12px 0 14px;
+}
+
+.set-approw img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+/* 设置行：彩色图标 + 文案 + 箭头/开关 */
+.set-row .set-ico {
+  font-size: 19px;
+  display: flex;
+  flex: none;
+  width: 26px;
+  justify-content: center;
+}
+
+.set-row.link {
+  cursor: pointer;
+  border-radius: 8px;
+  margin: 0 -8px;
+  padding: 8px 10px;
+  transition: background 100ms;
+}
+
+.set-row.link:hover {
+  background: var(--hover-b);
+}
+
+.set-row.link .info {
+  flex: 1;
+  min-width: 0;
+}
+
+.set-chev {
+  color: var(--text2);
+  font-size: 12px;
+  flex: none;
+}
+
+.set-spec {
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+.set-spec > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 2px;
+  border-bottom: 1px solid var(--hr);
+}
+
+.set-spec > div:last-child {
+  border-bottom: 0;
+}
+
+.set-spec span {
+  color: var(--text2);
+}
+
+.set-card {
+  background: var(--card);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+
+.set-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 0;
+}
+
+.set-row .info .t {
+  font-size: 13px;
+}
+
+.set-row .info .d {
+  font-size: 12px;
+  color: var(--text2);
+  margin-top: 2px;
+}
+
+.wall-option {
+  width: 132px;
+  height: 82px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-size: cover;
+  background-position: center;
+  cursor: pointer;
+  outline: 1px solid #99999940;
+  transition: transform 120ms;
+}
+
+.wall-option:hover {
+  transform: translateY(-2px);
+}
+
+.wall-option.on {
+  border-color: var(--theme-2);
+}
+
+.theme-dot {
+  display: inline-block;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 3px solid transparent;
+  transition: transform 120ms;
+}
+
+.theme-dot:hover {
+  transform: scale(1.1);
+}
+
+.theme-dot.on {
+  border-color: var(--text2);
+}
+
+/* ==================== Edge 浏览器（复刻原版 edge.css / mainpage.html） ==================== */

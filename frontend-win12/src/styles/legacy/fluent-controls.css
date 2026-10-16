@@ -1,0 +1,168 @@
+/* ---------- 按钮：Fluent accent / standard / subtle ---------- */
+.ant-btn {
+  border-radius: var(--r-ctl);
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+
+/* ---------- 按钮：原版 .button 形态 ----------
+ * 原版按钮是中性灰半透（#9f9f9f40、radius-lg、无描边），
+ * hover invert 提亮、active 半透明；primary 不再用饱和实心蓝。 */
+.ant-btn-primary:not(:disabled) {
+  background: #9f9f9f40;
+  border-color: transparent;
+  color: var(--txt1);
+  font-weight: 400;
+}
+
+.ant-btn-primary:not(:disabled):hover {
+  background: #8f8f8f5a;
+  border-color: transparent;
+}
+
+.ant-btn-primary:not(:disabled):active {
+  background: #7f7f7f66;
+  color: var(--txt1);
+  opacity: 0.85;
+}
+
+.ant-btn-primary.ant-btn-dangerous:not(:disabled) {
+  background: #c42b1c;
+  color: #fff;
+}
+
+.ant-btn-primary.ant-btn-dangerous:not(:disabled):hover {
+  background: #d13a2b;
+}
+
+.ant-btn-primary.ant-btn-dangerous:not(:disabled):active {
+  background: #a82317;
+}
+
+/* standard：hover 3.7% 黑、pressed 6% 且文字转次要（Fluent 官方行为） */
+.ant-btn-default:not(:disabled) {
+  color: var(--txt1);
+}
+
+.ant-btn-default:not(:disabled):hover {
+  background: var(--fill-subtle);
+  border-color: var(--stroke-ctl);
+}
+
+.ant-btn-default:not(:disabled):active {
+  background: var(--fill-press);
+  color: var(--txt2);
+  border-color: var(--stroke-ctl);
+}
+
+.ant-btn-default.ant-btn-dangerous:not(:disabled) {
+  color: #c42b1c;
+}
+
+/* text/subtle 按钮：hover 才出现底色 */
+.ant-btn-text:not(:disabled):hover {
+  background: var(--fill-subtle);
+}
+
+.ant-btn-text:not(:disabled):active {
+  background: var(--fill-press);
+}
+
+:root.dark .ant-btn-default:not(:disabled):hover,
+:root.dark .ant-btn-text:not(:disabled):hover {
+  background: var(--fill-subtle);
+}
+
+:root.dark .ant-btn-default:not(:disabled):active,
+:root.dark .ant-btn-text:not(:disabled):active {
+  background: var(--fill-press);
+}
+
+/* ---------- 输入控件：1px 浅灰描边 + 半透明底（无投影） ----------
+ * 规范依据（AGENTS.md「Win12 现代应用 UI 规范」）：
+ *   「输入框/下拉框：高 32px、圆角 8px、半透明毛玻璃底 + 1px 浅灰描边；
+ *     hover 描边轻微加深；聚焦描边变主题蓝，禁止发光阴影」。
+ *
+ * 此前实现是「无四边框 + 2.5px 粗灰下划线 + 灰色投影」，与该规范不符：
+ * 实测计算样式为 box-shadow rgba(153,153,153,.28) 0 1px 2px、
+ * border-bottom 2.5px rgba(127,127,127,.5)，在浅底上形成明显的下坠阴影
+ * （用户反馈「输入框下面有阴影，好丑」）。现按规范改为四边 1px 浅灰描边、
+ * 去掉投影，聚焦改为主题色描边 + 极细内环（不是外发光）。 */
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-input-number,
+.ant-input-number-group-wrapper,
+.ant-select:not(.ant-select-customize-input) .ant-select-selector,
+.ant-picker {
+  background: var(--bg50) !important;
+  border: 1px solid var(--stroke-ctl) !important;
+  border-radius: var(--r-ctl) !important;
+  box-shadow: none !important;
+  transition: background 100ms, border-color 100ms;
+}
+
+.ant-input-affix-wrapper .ant-input,
+.ant-input-number-input {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* ---------- 搜索框一体化（原版形态：图标内嵌右缘，无独立按钮块） ----------
+ * antd a-input-search 默认渲染「输入框 + 独立圆角按钮」两个分离块，
+ * 与下划线输入框风格组合后视觉割裂（用户反馈「难受」）。这里把 addon
+ * 负 margin 叠进输入框右缘：按钮透明化，只留灰色放大镜图标，
+ * hover 出现圆形浅底；输入框加右 padding 防止文字压到图标。 */
+.ant-input-search > .ant-input {
+  padding-right: 40px;
+}
+.ant-input-search > .ant-input-affix-wrapper {
+  padding-right: 66px;
+}
+.ant-input-search > .ant-input-group-addon {
+  width: 34px;
+  margin-left: -34px;
+  background: transparent !important;
+  border: none !important;
+  z-index: 1;
+}
+.ant-input-search > .ant-input-group-addon .ant-btn {
+  width: 100%;
+  height: 28px;
+  margin-top: 2px;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 5px !important;
+  color: var(--txt3);
+  transition: background 100ms, color 100ms;
+}
+.ant-input-search > .ant-input-group-addon .ant-btn:hover {
+  background: var(--fill-subtle) !important;
+  color: var(--txt1);
+}
+
+.ant-input:hover,
+.ant-input-affix-wrapper:hover,
+.ant-input-number:hover,
+.ant-select:not(.ant-select-customize-input):hover .ant-select-selector,
+.ant-picker:hover {
+  background: var(--contextmeu) !important;
+  /* hover 只轻微加深描边（规范：「hover 描边轻微加深」），不加投影 */
+  border-color: var(--stroke-ctl) !important;
+  box-shadow: none !important;
+}
+
+.ant-input-focused,
+.ant-input:focus,
+.ant-input-affix-wrapper-focused,
+.ant-input-affix-wrapper:focus-within,
+.ant-input-number-focused,
+.ant-select-focused .ant-select-selector,
+.ant-picker-focused {
+  /* 聚焦：描边变主题蓝（规范：「聚焦描边变主题蓝，禁止发光阴影」）。
+   * 原实现用 0 1px 10px 的外发光 + 2.5px 渐变下划线，与规范冲突。 */
+  background: var(--bg50) !important;
+  border-color: var(--accent) !important;
+  box-shadow: none !important;
+}
+

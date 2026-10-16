@@ -1,0 +1,270 @@
+
+.edge {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 工具栏：原版 #win-edge>.tool */
+.edge-tool {
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 6px 7px 2px 7px;
+}
+
+.edge-a {
+  width: 35px;
+  height: 30px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  cursor: pointer;
+  transition: 50ms;
+  flex: none;
+}
+
+.edge-a:hover {
+  background: var(--hover-b);
+}
+
+.edge-a.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.edge-a.dim {
+  opacity: 0.35;
+}
+
+/* 胶囊地址栏：原版 border-radius:50px，hover 灰边、focus 主题色边 */
+.edge-url {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  margin: 0 2px;
+  background: var(--hover-b);
+  border-radius: 50px;
+  border: 1.5px solid transparent;
+  padding: 3px 14px 4px 12px;
+  outline: none;
+  color: inherit;
+  font-size: 13px;
+  transition: 100ms, border 0s;
+  user-select: text;
+}
+
+.edge-url:hover {
+  border-color: #7f7f7f7f;
+}
+
+.edge-url:focus {
+  border-color: var(--theme-2);
+}
+
+/* 标签页条 */
+.edge-tabs {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px 0 10px;
+}
+
+.edge-tab {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  min-width: 110px;
+  max-width: 200px;
+  padding: 0 6px 0 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text2);
+  cursor: pointer;
+  transition: 50ms;
+}
+
+.edge-tab:hover {
+  background: var(--hover-b);
+}
+
+.edge-tab.on {
+  background: var(--hover-b);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--hr);
+}
+
+.edge-tab img {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.edge-tab .tt {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.edge-tab .x {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  flex: none;
+}
+
+.edge-tab .x:hover {
+  background: #88888850;
+}
+
+.edge-newtab {
+  width: 30px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--text2);
+  cursor: pointer;
+  transition: 50ms;
+}
+
+.edge-newtab:hover {
+  background: var(--hover-b);
+  color: var(--text);
+}
+
+/* 收藏栏：原版 #save-bar + .save-item */
+.edge-savebar {
+  flex: none;
+  display: flex;
+  gap: 2px;
+  padding: 2px 12px 4px;
+  margin: 0;
+  white-space: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.edge-savebar::-webkit-scrollbar {
+  display: none;
+}
+
+.save-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  padding: 5px;
+  padding-top: 3px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: inherit;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.save-item:hover {
+  background: var(--hover-b);
+}
+
+/* 内容区：原版 iframe width calc(100%-4px) margin 2px radius 2xl(10px) */
+.edge-stage {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.edge-frame {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  width: calc(100% - 4px);
+  height: calc(100% - 4px);
+  border: 0;
+  border-radius: 10px;
+  background: #fff;
+  display: none;
+}
+
+:root.dark .edge-frame {
+  background: #1f1f1f;
+}
+
+.edge-home-wrap {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  border-radius: 10px;
+  background: var(--unfoc);
+  display: none;
+}
+
+:root.dark .edge-home-wrap {
+  background: var(--card);
+}
+
+/* 新标签页：原版 mainpage.html（透明体 + Bing logo + 搜索胶囊） */
+.edge-home {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.edge-bing {
+  height: 60px;
+  margin-bottom: 30px;
+  transform: translateY(-46px);
+}
+
+.edge-search {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 50%;
+  min-width: 320px;
+  max-width: 620px;
+  height: 44px;
+  border-radius: 25px;
+  border: 2px solid #6f6f6f50;
+  padding: 4px 25px 5px 25px;
+  backdrop-filter: saturate(1.3);
+  box-shadow: 1px 3px 8px #00000045;
+}
+
+.edge-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-size: 17px;
+  color: #7f7f7f;
+  margin-left: 14px;
+  user-select: text;
+}
+
+.edge-search input::placeholder {
+  color: #7f7f7f;
+  opacity: 0.9;
+}
+
+
+/* ==================== 应用商店 ==================== */

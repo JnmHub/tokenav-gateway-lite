@@ -1,0 +1,739 @@
+//go:build unit
+
+package admin
+
+import (
+	"bytes"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
+	"github.com/Wei-Shaw/sub2api/internal/config"
+	"github.com/Wei-Shaw/sub2api/internal/service"
+	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/require"
+)
+
+// ---------------------------------------------------------------------------
+// helpers
+// ---------------------------------------------------------------------------
+
+func float64Ptr(v float64) *float64 { return &v }
+func intPtr(v int) *int             { return &v }
+
+// ---------------------------------------------------------------------------
+// 1. channelToResponse
+// ---------------------------------------------------------------------------
+
+func TestChannelToResponse_NilInput(t *testing.T) {
+	require.Nil(t, channelToResponse(nil))
+}
+
+func TestChannelToResponse_FullChannel(t *testing.T) {
+	now := time.Date(2025, 6, 1, 12, 0, 0, 0, time.UTC)
+	ch := &service.Channel{
+		ID:                 42,
+		Name:               "test-channel",
+		Description:        "desc",
+		Status:             "active",
+		BillingModelSource: "upstream",
+		RestrictModels:     true,
+		CreatedAt:          now,
+		UpdatedAt:          now.Add(time.Hour),
+		GroupIDs:           []int64{1, 2, 3},
+		ModelPricing: []service.ChannelModelPricing{
+			{
+				ID:              10,
+				Platform:        "openai",
+				Models:          []string{"gpt-4"},
+				BillingMode:     service.BillingModeToken,
+				InputPrice:      float64Ptr(0.01),
+				OutputPrice:     float64Ptr(0.03),
+				CacheWritePrice: float64Ptr(0.005),
+				CacheReadPrice:  float64Ptr(0.002),
+				PerRequestPrice: float64Ptr(0.5),
+			},
+		},
+		ModelMapping: map[string]map[string]string{
+			"anthropic": {"claude-3-haiku": "claude-haiku-3"},
+		},
+	}
+
+	resp := channelToResponse(ch)
+	require.NotNil(t, resp)
+	require.Equal(t, int64(42), resp.ID)
+	require.Equal(t, "test-channel", resp.Name)
+	require.Equal(t, "desc", resp.Description)
+	require.Equal(t, "active", resp.Status)
+	require.Equal(t, "upstream", resp.BillingModelSource)
+	require.True(t, resp.RestrictModels)
+	require.Equal(t, []int64{1, 2, 3}, resp.GroupIDs)
+	require.Equal(t, "2025-06-01T12:00:00Z", resp.CreatedAt)
+	require.Equal(t, "2025-06-01T13:00:00Z", resp.UpdatedAt)
+
+	// model mapping
+	require.Len(t, resp.ModelMapping, 1)
+	require.Equal(t, "claude-haiku-3", resp.ModelMapping["anthropic"]["claude-3-haiku"])
+
+	// pricing
+	require.Len(t, resp.ModelPricing, 1)
+	p := resp.ModelPricing[0]
+	require.Equal(t, int64(10), p.ID)
+	require.Equal(t, "openai", p.Platform)
+	require.Equal(t, []string{"gpt-4"}, p.Models)
+	require.Equal(t, "token", p.BillingMode)
+	require.Equal(t, float64Ptr(0.01), p.InputPrice)
+	require.Equal(t, float64Ptr(0.03), p.OutputPrice)
+	require.Equal(t, float64Ptr(0.005), p.CacheWritePrice)
+	require.Equal(t, float64Ptr(0.002), p.CacheReadPrice)
+	require.Equal(t, float64Ptr(0.5), p.PerRequestPrice)
+	require.Empty(t, p.Intervals)
+}
+
+func TestChannelToResponse_EmptyDefaults(t *testing.T) {
+	now := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	ch := &service.Channel{
+		ID:                 1,
+		Name:               "ch",
+		BillingModelSource: service.BillingModelSourceChannelMapped,
+		CreatedAt:          now,
+		UpdatedAt:          now,
+		GroupIDs:           nil,
+		ModelMapping:       nil,
+		ModelPricing: []service.ChannelModelPricing{
+			{
+				Platform:    "",
+				BillingMode: "",
+				Models:      []string{"m1"},
+			},
+		},
+	}
+
+	// handler 层 channelToResponse 现在是纯透传：BillingModelSource 的空值兜底
+	// 已下放到 service 层（Create/GetByID/List/Update/ListAvailable 出口统一处理），
+	// 因此这里构造 fixture 时直接传入归一化后的值。
+	resp := channelToResponse(ch)
+	require.Equal(t, "channel_mapped", resp.BillingModelSource)
+	require.NotNil(t, resp.GroupIDs)
+	require.Empty(t, resp.GroupIDs)
+	require.NotNil(t, resp.ModelMapping)
+	require.Empty(t, resp.ModelMapping)
+
+	require.Len(t, resp.ModelPricing, 1)
+	require.Equal(t, "anthropic", resp.ModelPricing[0].Platform)
+	require.Equal(t, "token", resp.ModelPricing[0].BillingMode)
+}
+
+func TestChannelToResponse_BillingModelSourcePassthrough(t *testing.T) {
+	// handler 不再兜底 BillingModelSource：空值应原样透传（由 service 层负责默认回填）。
+	ch := &service.Channel{
+		ID:                 1,
+		Name:               "ch",
+		BillingModelSource: "",
+		CreatedAt:          time.Now(),
+		UpdatedAt:          time.Now(),
+	}
+	resp := channelToResponse(ch)
+	require.Equal(t, "", resp.BillingModelSource, "handler 应纯透传，默认值由 service.normalizeBillingModelSource 负责")
+}
+
+func TestChannelToResponse_NilModels(t *testing.T) {
+	now := time.Now()
+	ch := &service.Channel{
+		ID:        1,
+		Name:      "ch",
+		CreatedAt: now,
+		UpdatedAt: now,
+		ModelPricing: []service.ChannelModelPricing{
+			{
+				Models: nil,
+			},
+		},
+	}
+
+	resp := channelToResponse(ch)
+	require.Len(t, resp.ModelPricing, 1)
+	require.NotNil(t, resp.ModelPricing[0].Models)
+	require.Empty(t, resp.ModelPricing[0].Models)
+}
+
+func TestChannelToResponse_WithIntervals(t *testing.T) {
+	now := time.Now()
+	ch := &service.Channel{
+		ID:        1,
+		Name:      "ch",
+		CreatedAt: now,
+		UpdatedAt: now,
+		ModelPricing: []service.ChannelModelPricing{
+			{
+				Models:      []string{"m1"},
+				BillingMode: service.BillingModePerRequest,
+				Intervals: []service.PricingInterval{
+					{
+						ID:              100,
+						MinTokens:       0,
+						MaxTokens:       intPtr(1000),
+						TierLabel:       "1K",
+						InputPrice:      float64Ptr(0.01),
+						OutputPrice:     float64Ptr(0.02),
+						CacheWritePrice: float64Ptr(0.003),
+						CacheReadPrice:  float64Ptr(0.001),
+						PerRequestPrice: float64Ptr(0.1),
+						SortOrder:       1,
+					},
+					{
+						ID:        101,
+						MinTokens: 1000,
+						MaxTokens: nil,
+						TierLabel: "unlimited",
+						SortOrder: 2,
+					},
+				},
+			},
+		},
+	}
+
+	resp := channelToResponse(ch)
+	require.Len(t, resp.ModelPricing, 1)
+	intervals := resp.ModelPricing[0].Intervals
+	require.Len(t, intervals, 2)
+
+	iv0 := intervals[0]
+	require.Equal(t, int64(100), iv0.ID)
+	require.Equal(t, 0, iv0.MinTokens)
+	require.Equal(t, intPtr(1000), iv0.MaxTokens)
+	require.Equal(t, "1K", iv0.TierLabel)
+	require.Equal(t, float64Ptr(0.01), iv0.InputPrice)
+	require.Equal(t, float64Ptr(0.02), iv0.OutputPrice)
+	require.Equal(t, float64Ptr(0.003), iv0.CacheWritePrice)
+	require.Equal(t, float64Ptr(0.001), iv0.CacheReadPrice)
+	require.Equal(t, float64Ptr(0.1), iv0.PerRequestPrice)
+	require.Equal(t, 1, iv0.SortOrder)
+
+	iv1 := intervals[1]
+	require.Equal(t, int64(101), iv1.ID)
+	require.Equal(t, 1000, iv1.MinTokens)
+	require.Nil(t, iv1.MaxTokens)
+	require.Equal(t, "unlimited", iv1.TierLabel)
+	require.Equal(t, 2, iv1.SortOrder)
+}
+
+func TestChannelToResponse_MultipleEntries(t *testing.T) {
+	now := time.Now()
+	ch := &service.Channel{
+		ID:        1,
+		Name:      "multi",
+		CreatedAt: now,
+		UpdatedAt: now,
+		ModelPricing: []service.ChannelModelPricing{
+			{
+				ID:          1,
+				Platform:    "anthropic",
+				Models:      []string{"claude-sonnet-4"},
+				BillingMode: service.BillingModeToken,
+				InputPrice:  float64Ptr(0.003),
+				OutputPrice: float64Ptr(0.015),
+			},
+			{
+				ID:              2,
+				Platform:        "openai",
+				Models:          []string{"gpt-4", "gpt-4o"},
+				BillingMode:     service.BillingModePerRequest,
+				PerRequestPrice: float64Ptr(1.0),
+			},
+			{
+				ID:               3,
+				Platform:         "gemini",
+				Models:           []string{"gemini-2.5-pro"},
+				BillingMode:      service.BillingModeImage,
+				ImageOutputPrice: float64Ptr(0.05),
+				PerRequestPrice:  float64Ptr(0.2),
+			},
+		},
+	}
+
+	resp := channelToResponse(ch)
+	require.Len(t, resp.ModelPricing, 3)
+
+	require.Equal(t, int64(1), resp.ModelPricing[0].ID)
+	require.Equal(t, "anthropic", resp.ModelPricing[0].Platform)
+	require.Equal(t, []string{"claude-sonnet-4"}, resp.ModelPricing[0].Models)
+	require.Equal(t, "token", resp.ModelPricing[0].BillingMode)
+
+	require.Equal(t, int64(2), resp.ModelPricing[1].ID)
+	require.Equal(t, "openai", resp.ModelPricing[1].Platform)
+	require.Equal(t, []string{"gpt-4", "gpt-4o"}, resp.ModelPricing[1].Models)
+	require.Equal(t, "per_request", resp.ModelPricing[1].BillingMode)
+
+	require.Equal(t, int64(3), resp.ModelPricing[2].ID)
+	require.Equal(t, "gemini", resp.ModelPricing[2].Platform)
+	require.Equal(t, []string{"gemini-2.5-pro"}, resp.ModelPricing[2].Models)
+	require.Equal(t, "image", resp.ModelPricing[2].BillingMode)
+	require.Equal(t, float64Ptr(0.05), resp.ModelPricing[2].ImageOutputPrice)
+}
+
+// ---------------------------------------------------------------------------
+// 2. pricingRequestToService
+// ---------------------------------------------------------------------------
+
+func TestPricingRequestToService_Defaults(t *testing.T) {
+	tests := []struct {
+		name      string
+		req       channelModelPricingRequest
+		wantField string // which default field to check
+		wantValue string
+	}{
+		{
+			name: "empty billing mode defaults to token",
+			req: channelModelPricingRequest{
+				Models:      []string{"m1"},
+				BillingMode: "",
+			},
+			wantField: "BillingMode",
+			wantValue: string(service.BillingModeToken),
+		},
+		{
+			name: "empty platform stays empty",
+			req: channelModelPricingRequest{
+				Models:   []string{"m1"},
+				Platform: "",
+			},
+			wantField: "Platform",
+			wantValue: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := pricingRequestToService([]channelModelPricingRequest{tt.req})
+			require.Len(t, result, 1)
+			switch tt.wantField {
+			case "BillingMode":
+				require.Equal(t, service.BillingMode(tt.wantValue), result[0].BillingMode)
+			case "Platform":
+				require.Equal(t, tt.wantValue, result[0].Platform)
+			}
+		})
+	}
+}
+
+func TestPricingRequestToService_WithAllFields(t *testing.T) {
+	reqs := []channelModelPricingRequest{
+		{
+			Platform:         "openai",
+			Models:           []string{"gpt-4", "gpt-4o"},
+			BillingMode:      "per_request",
+			InputPrice:       float64Ptr(0.01),
+			OutputPrice:      float64Ptr(0.03),
+			CacheWritePrice:  float64Ptr(0.005),
+			CacheReadPrice:   float64Ptr(0.002),
+			ImageOutputPrice: float64Ptr(0.04),
+			PerRequestPrice:  float64Ptr(0.5),
+		},
+	}
+
+	result := pricingRequestToService(reqs)
+	require.Len(t, result, 1)
+	r := result[0]
+	require.Equal(t, "openai", r.Platform)
+	require.Equal(t, []string{"gpt-4", "gpt-4o"}, r.Models)
+	require.Equal(t, service.BillingModePerRequest, r.BillingMode)
+	require.Equal(t, float64Ptr(0.01), r.InputPrice)
+	require.Equal(t, float64Ptr(0.03), r.OutputPrice)
+	require.Equal(t, float64Ptr(0.005), r.CacheWritePrice)
+	require.Equal(t, float64Ptr(0.002), r.CacheReadPrice)
+	require.Equal(t, float64Ptr(0.04), r.ImageOutputPrice)
+	require.Equal(t, float64Ptr(0.5), r.PerRequestPrice)
+}
+
+func TestPricingRequestToService_WithIntervals(t *testing.T) {
+	reqs := []channelModelPricingRequest{
+		{
+			Models:      []string{"m1"},
+			BillingMode: "per_request",
+			Intervals: []pricingIntervalRequest{
+				{
+					MinTokens:       0,
+					MaxTokens:       intPtr(2000),
+					TierLabel:       "small",
+					InputPrice:      float64Ptr(0.01),
+					OutputPrice:     float64Ptr(0.02),
+					CacheWritePrice: float64Ptr(0.003),
+					CacheReadPrice:  float64Ptr(0.001),
+					PerRequestPrice: float64Ptr(0.1),
+					SortOrder:       1,
+				},
+				{
+					MinTokens: 2000,
+					MaxTokens: nil,
+					TierLabel: "large",
+					SortOrder: 2,
+				},
+			},
+		},
+	}
+
+	result := pricingRequestToService(reqs)
+	require.Len(t, result, 1)
+	require.Len(t, result[0].Intervals, 2)
+
+	iv0 := result[0].Intervals[0]
+	require.Equal(t, 0, iv0.MinTokens)
+	require.Equal(t, intPtr(2000), iv0.MaxTokens)
+	require.Equal(t, "small", iv0.TierLabel)
+	require.Equal(t, float64Ptr(0.01), iv0.InputPrice)
+	require.Equal(t, float64Ptr(0.02), iv0.OutputPrice)
+	require.Equal(t, float64Ptr(0.003), iv0.CacheWritePrice)
+	require.Equal(t, float64Ptr(0.001), iv0.CacheReadPrice)
+	require.Equal(t, float64Ptr(0.1), iv0.PerRequestPrice)
+	require.Equal(t, 1, iv0.SortOrder)
+
+	iv1 := result[0].Intervals[1]
+	require.Equal(t, 2000, iv1.MinTokens)
+	require.Nil(t, iv1.MaxTokens)
+	require.Equal(t, "large", iv1.TierLabel)
+	require.Equal(t, 2, iv1.SortOrder)
+}
+
+func TestPricingRequestToService_EmptySlice(t *testing.T) {
+	result := pricingRequestToService([]channelModelPricingRequest{})
+	require.NotNil(t, result)
+	require.Empty(t, result)
+}
+
+func TestPricingRequestToService_NilPriceFields(t *testing.T) {
+	reqs := []channelModelPricingRequest{
+		{
+			Models:      []string{"m1"},
+			BillingMode: "token",
+			// all price fields are nil by default
+		},
+	}
+
+	result := pricingRequestToService(reqs)
+	require.Len(t, result, 1)
+	r := result[0]
+	require.Nil(t, r.InputPrice)
+	require.Nil(t, r.OutputPrice)
+	require.Nil(t, r.CacheWritePrice)
+	require.Nil(t, r.CacheReadPrice)
+	require.Nil(t, r.ImageOutputPrice)
+	require.Nil(t, r.PerRequestPrice)
+}
+
+// ---------------------------------------------------------------------------
+// 3. SyncPricingModels handler
+// ---------------------------------------------------------------------------
+
+func setupSyncPricingModelsRouter(pricingSvc *service.PricingService) *gin.Engine {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	h := &ChannelHandler{pricingService: pricingSvc}
+	router.GET("/channels/pricing/sync-models", h.SyncPricingModels)
+	return router
+}
+
+func TestSyncPricingModels_MissingPlatform(t *testing.T) {
+	svc := service.NewPricingService(nil, nil)
+	router := setupSyncPricingModelsRouter(svc)
+
+	req := httptest.NewRequest(http.MethodGet, "/channels/pricing/sync-models", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestSyncPricingModels_UnsupportedPlatform(t *testing.T) {
+	svc := service.NewPricingService(nil, nil)
+	router := setupSyncPricingModelsRouter(svc)
+
+	req := httptest.NewRequest(http.MethodGet, "/channels/pricing/sync-models?platform=unknown", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestSyncPricingModels_ValidPlatform_EmptyService(t *testing.T) {
+	svc := service.NewPricingService(nil, nil)
+	router := setupSyncPricingModelsRouter(svc)
+
+	for _, platform := range []string{"anthropic", "openai", "gemini", "antigravity", "grok"} {
+		req := httptest.NewRequest(http.MethodGet, "/channels/pricing/sync-models?platform="+platform, nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusOK, w.Code, "platform=%s", platform)
+
+		var body struct {
+			Data struct {
+				Models []string `json:"models"`
+			} `json:"data"`
+		}
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+		require.NotNil(t, body.Data.Models, "models must not be null for platform=%s", platform)
+	}
+}
+
+func TestListModelPrices_IncludesGrokVideoRates(t *testing.T) {
+	router := setupModelPricesRouter(t)
+	req := httptest.NewRequest(http.MethodGet, "/model-prices?search=grok-imagine-video-1.5", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var body struct {
+		Data struct {
+			Items []modelPriceCatalogResponse `json:"items"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	require.Len(t, body.Data.Items, 1)
+	require.Equal(t, "video", body.Data.Items[0].BillingMode)
+	require.InDelta(t, 0.08, body.Data.Items[0].VideoPricePerSecond480P, 1e-12)
+	require.InDelta(t, 0.08, body.Data.Items[0].VideoPricePerSecond720P, 1e-12)
+	require.InDelta(t, 0.08, body.Data.Items[0].VideoPricePerSecond1080P, 1e-12)
+}
+
+func TestModelPriceOverride_AcceptsVideoPerSecondRates(t *testing.T) {
+	router := setupModelPricesRouter(t)
+	payload := []byte(`{
+		"model":"grok-imagine-video",
+		"provider":"xai",
+		"mode":"video_generation",
+		"billing_mode":"video",
+		"video_price_per_second_480p":0.12,
+		"video_price_per_second_720p":0.24
+	}`)
+	req := httptest.NewRequest(http.MethodPut, "/model-prices", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var body struct {
+		Data modelPriceCatalogResponse `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	require.Equal(t, "video", body.Data.BillingMode)
+	require.InDelta(t, 0.12, body.Data.VideoPricePerSecond480P, 1e-12)
+	require.InDelta(t, 0.24, body.Data.VideoPricePerSecond720P, 1e-12)
+}
+
+// ---------------------------------------------------------------------------
+// 4. Model price catalog handlers
+// ---------------------------------------------------------------------------
+
+func setupModelPricesRouter(t *testing.T) *gin.Engine {
+	t.Helper()
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	cfg := &config.Config{Pricing: config.PricingConfig{DataDir: t.TempDir()}}
+	h := &ChannelHandler{pricingService: service.NewPricingService(cfg, nil)}
+	router.GET("/model-prices", h.ListModelPrices)
+	router.PUT("/model-prices", h.UpsertModelPrice)
+	router.DELETE("/model-prices", h.DeleteModelPrice)
+	return router
+}
+
+func TestListModelPrices_IncludesStaticMimoFallback(t *testing.T) {
+	router := setupModelPricesRouter(t)
+
+	req := httptest.NewRequest(http.MethodGet, "/model-prices?search=mimo-v2.5-pro", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var body struct {
+		Data struct {
+			Items []modelPriceCatalogResponse `json:"items"`
+			Total int64                       `json:"total"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	require.GreaterOrEqual(t, body.Data.Total, int64(1))
+	require.Equal(t, "mimo-v2.5-pro", body.Data.Items[0].Model)
+	require.Equal(t, "xiaomi", body.Data.Items[0].Provider)
+	require.InDelta(t, 0.435, body.Data.Items[0].InputCostPer1MTokens, 1e-12)
+	require.Equal(t, "static_fallback", body.Data.Items[0].Source)
+}
+
+func TestModelPriceOverride_UpsertAndDeleteFallsBack(t *testing.T) {
+	router := setupModelPricesRouter(t)
+
+	payload := []byte(`{
+		"model":"mimo-v2.5-pro",
+		"provider":"xiaomi",
+		"mode":"chat",
+		"input_cost_per_1m_tokens":1.23,
+		"output_cost_per_1m_tokens":4.56,
+		"cache_read_cost_per_1m_tokens":0.11,
+		"cache_creation_cost_per_1m_tokens":0,
+		"supports_prompt_caching":true
+	}`)
+	req := httptest.NewRequest(http.MethodPut, "/model-prices", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var upsertBody struct {
+		Data modelPriceCatalogResponse `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &upsertBody))
+	require.True(t, upsertBody.Data.IsOverride)
+	require.Equal(t, "override", upsertBody.Data.Source)
+	require.InDelta(t, 1.23, upsertBody.Data.InputCostPer1MTokens, 1e-12)
+
+	req = httptest.NewRequest(http.MethodDelete, "/model-prices?model=mimo-v2.5-pro", nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var deleteBody struct {
+		Data struct {
+			Deleted bool                      `json:"deleted"`
+			Current modelPriceCatalogResponse `json:"current"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &deleteBody))
+	require.True(t, deleteBody.Data.Deleted)
+	require.False(t, deleteBody.Data.Current.IsOverride)
+	require.Equal(t, "static_fallback", deleteBody.Data.Current.Source)
+	require.InDelta(t, 0.435, deleteBody.Data.Current.InputCostPer1MTokens, 1e-12)
+}
+
+func TestModelPriceOverride_AllowsDecimalMultiplierPrice(t *testing.T) {
+	router := setupModelPricesRouter(t)
+
+	payload := []byte(`{
+		"model":"mimo-v2.5-pro",
+		"provider":"xiaomi",
+		"input_cost_per_1m_tokens":1.25,
+		"output_cost_per_1m_tokens":2.5
+	}`)
+	req := httptest.NewRequest(http.MethodPut, "/model-prices", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	req = httptest.NewRequest(http.MethodGet, "/model-prices?search=mimo-v2.5-pro", nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var body struct {
+		Data struct {
+			Items []modelPriceCatalogResponse `json:"items"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	require.NotEmpty(t, body.Data.Items)
+	require.True(t, body.Data.Items[0].IsOverride)
+	require.InDelta(t, 1.25, body.Data.Items[0].InputCostPer1MTokens, 1e-12)
+	require.InDelta(t, 2.5, body.Data.Items[0].OutputCostPer1MTokens, 1e-12)
+}
+
+func TestModelPriceOverride_SeparatesShortPriorityAndStandardLongContextPrices(t *testing.T) {
+	router := setupModelPricesRouter(t)
+	payload := []byte(`{
+		"model":"gpt-5.6-sol",
+		"provider":"openai",
+		"mode":"chat",
+		"input_cost_per_1m_tokens":5,
+		"input_cost_per_1m_tokens_priority":10,
+		"output_cost_per_1m_tokens":30,
+		"output_cost_per_1m_tokens_priority":60,
+		"cache_creation_cost_per_1m_tokens":6.25,
+		"cache_creation_cost_per_1m_tokens_priority":12.5,
+		"cache_read_cost_per_1m_tokens":0.5,
+		"cache_read_cost_per_1m_tokens_priority":1,
+		"input_cost_per_1m_tokens_above_272k":10,
+		"input_cost_per_1m_tokens_priority_above_272k":20,
+		"output_cost_per_1m_tokens_above_272k":45,
+		"output_cost_per_1m_tokens_priority_above_272k":90,
+		"cache_creation_cost_per_1m_tokens_above_272k":12.5,
+		"cache_creation_cost_per_1m_tokens_priority_above_272k":25,
+		"cache_read_cost_per_1m_tokens_above_272k":1,
+		"cache_read_cost_per_1m_tokens_priority_above_272k":2,
+		"long_context_input_token_threshold":272000,
+		"supports_prompt_caching":true,
+		"supports_service_tier":true
+	}`)
+	req := httptest.NewRequest(http.MethodPut, "/model-prices", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var body struct {
+		Data modelPriceCatalogResponse `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	require.True(t, body.Data.SupportsServiceTier)
+	require.Equal(t, 272000, body.Data.LongContextInputTokenThreshold)
+	require.InDelta(t, 10, body.Data.InputCostPer1MTokensPriority, 1e-12)
+	require.InDelta(t, 12.5, body.Data.CacheCreationCostPer1MTokensAbove272K, 1e-12)
+	require.InDelta(t, 45, body.Data.OutputCostPer1MTokensAbove272K, 1e-12)
+	require.InDelta(t, 20, body.Data.InputCostPer1MTokensPriorityAbove272K, 1e-12)
+	require.InDelta(t, 25, body.Data.CacheCreationCostPer1MTokensPriorityAbove272K, 1e-12)
+	require.InDelta(t, 90, body.Data.OutputCostPer1MTokensPriorityAbove272K, 1e-12)
+	require.InDelta(t, 2, body.Data.CacheReadCostPer1MTokensPriorityAbove272K, 1e-12)
+}
+
+func TestModelPriceOverride_AllowsPriorityLongContextPriceOnly(t *testing.T) {
+	router := setupModelPricesRouter(t)
+	payload := []byte(`{
+		"model":"priority-long-context-only",
+		"provider":"openai",
+		"input_cost_per_1m_tokens_priority_above_272k":20
+	}`)
+	req := httptest.NewRequest(http.MethodPut, "/model-prices", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var body struct {
+		Data modelPriceCatalogResponse `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	require.InDelta(t, 20, body.Data.InputCostPer1MTokensPriorityAbove272K, 1e-12)
+}
+
+func TestModelPriceOverride_DisableAndDeleteFallsBack(t *testing.T) {
+	router := setupModelPricesRouter(t)
+
+	payload := []byte(`{"model":"mimo-v2.5-pro","disabled":true}`)
+	req := httptest.NewRequest(http.MethodPut, "/model-prices", bytes.NewReader(payload))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var upsertBody struct {
+		Data modelPriceCatalogResponse `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &upsertBody))
+	require.True(t, upsertBody.Data.IsOverride)
+	require.True(t, upsertBody.Data.Disabled)
+
+	req = httptest.NewRequest(http.MethodDelete, "/model-prices?model=mimo-v2.5-pro", nil)
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var deleteBody struct {
+		Data struct {
+			Current modelPriceCatalogResponse `json:"current"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &deleteBody))
+	require.False(t, deleteBody.Data.Current.IsOverride)
+	require.False(t, deleteBody.Data.Current.Disabled)
+}

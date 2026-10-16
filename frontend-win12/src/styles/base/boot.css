@@ -1,0 +1,62 @@
+/* ==================== 开机画面 ==================== */
+
+.w12-boot {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 72px;
+  transition: opacity 500ms;
+}
+
+.w12-boot.gone {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* tokenav 品牌标记：SVG mask 蒙版 + 品牌色填充（#10B981） */
+.w12-boot>div.w12-boot-logo {
+  width: 110px;
+  height: 110px;
+  background: #10B981;
+  -webkit-mask: url('/tokenav-symbol-emerald.png') center / contain no-repeat;
+  mask: url('/tokenav-symbol-emerald.png') center / contain no-repeat;
+}
+
+.w12-boot-dots {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  animation: boot-spin 2s linear infinite;
+}
+
+.w12-boot-dots i {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #fff;
+  animation: boot-fade 1.6s linear infinite;
+}
+
+@keyframes boot-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes boot-fade {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.15;
+  }
+}
+

@@ -1,0 +1,1445 @@
+package repository
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"sort"
+	"strings"
+
+	dbent "github.com/Wei-Shaw/sub2api/ent"
+	"github.com/Wei-Shaw/sub2api/ent/group"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/pagination"
+	"github.com/Wei-Shaw/sub2api/internal/service"
+	"github.com/lib/pq"
+
+	entsql "entgo.io/ent/dialect/sql"
+)
+
+type sqlExecutor interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+}
+
+type groupRepository struct {
+	client              *dbent.Client
+	sql                 sqlExecutor
+	schedulerGroupCache service.SchedulerGroupCache
+}
+
+func NewGroupRepository(client *dbent.Client, sqlDB *sql.DB, schedulerCache service.SchedulerCache) service.GroupRepository {
+	var groupCache service.SchedulerGroupCache
+	if cache, ok := schedulerCache.(service.SchedulerGroupCache); ok {
+		groupCache = cache
+	}
+	return newGroupRepositoryWithSQLAndSchedulerCache(client, sqlDB, groupCache)
+}
+
+func newGroupRepositoryWithSQL(client *dbent.Client, sqlq sqlExecutor) *groupRepository {
+	return newGroupRepositoryWithSQLAndSchedulerCache(client, sqlq, nil)
+}
+
+func newGroupRepositoryWithSQLAndSchedulerCache(client *dbent.Client, sqlq sqlExecutor, schedulerGroupCache service.SchedulerGroupCache) *groupRepository {
+	return &groupRepository{client: client, sql: sqlq, schedulerGroupCache: schedulerGroupCache}
+}
+
+func (r *groupRepository) Create(ctx context.Context, groupIn *service.Group) error {
+	if err := createGroupRecord(ctx, r.client, groupIn); err != nil {
+		return err
+	}
+	r.syncSchedulerGroup(ctx, groupIn)
+	if err := enqueueSchedulerOutbox(ctx, r.sql, service.SchedulerOutboxEventGroupChanged, nil, &groupIn.ID, nil); err != nil {
+		logger.LegacyPrintf("repository.group", "[SchedulerOutbox] enqueue group create failed: group=%d err=%v", groupIn.ID, err)
+	}
+	return nil
+}
+
+func createGroupRecord(ctx context.Context, client *dbent.Client, groupIn *service.Group) error {
+	if groupIn == nil {
+		return errors.New("group is nil")
+	}
+	// 旧调用方创建分组时没有高峰策略字段。这里统一补成可持久化的关闭态，
+	// 避免把 Go 零值写进带正数约束的新列；开启态仍保留原值并由上层校验。
+	groupIn.PeakRateEnabled, groupIn.PeakStart, groupIn.PeakEnd, groupIn.PeakRateMultiplier, groupIn.PeakTimezone = service.NormalizePeakRateConfig(
+		groupIn.PeakRateEnabled, groupIn.PeakStart, groupIn.PeakEnd, groupIn.PeakRateMultiplier, groupIn.PeakTimezone,
+	)
+	groupIn.SchedulingMode, _ = service.NormalizeGroupSchedulingMode(groupIn.SchedulingMode)
+	builder := client.Group.Create().
+		SetName(groupIn.Name).
+		SetDescription(groupIn.Description).
+		SetPlatform(groupIn.Platform).
+		SetDisplayBrand(groupIn.DisplayBrand).
+		SetDisplayIcon(groupIn.DisplayIcon).
+		SetRateMultiplier(groupIn.RateMultiplier).
+		SetPeakRateEnabled(groupIn.PeakRateEnabled).
+		SetPeakStart(groupIn.PeakStart).
+		SetPeakEnd(groupIn.PeakEnd).
+		SetPeakRateMultiplier(groupIn.PeakRateMultiplier).
+		SetPeakTimezone(groupIn.PeakTimezone).
+		SetSortOrder(groupIn.SortOrder).
+		SetIsExclusive(groupIn.IsExclusive).
+		SetLocalOnly(groupIn.LocalOnly).
+		SetNillableMinimumTier(groupIn.MinimumTier).
+		SetStatus(groupIn.Status).
+		SetSchedulingMode(groupIn.SchedulingMode).
+		SetPerUserConcurrency(groupIn.PerUserConcurrency).
+		SetSubscriptionType(groupIn.SubscriptionType).
+		SetNillableDailyLimitUsd(groupIn.DailyLimitUSD).
+		SetNillableWeeklyLimitUsd(groupIn.WeeklyLimitUSD).
+		SetNillableMonthlyLimitUsd(groupIn.MonthlyLimitUSD).
+		SetAllowImageGeneration(groupIn.AllowImageGeneration).
+		SetImageRateIndependent(groupIn.ImageRateIndependent).
+		SetImageRateMultiplier(groupIn.ImageRateMultiplier).
+		SetNillableImagePrice1k(groupIn.ImagePrice1K).
+		SetNillableImagePrice2k(groupIn.ImagePrice2K).
+		SetNillableImagePrice4k(groupIn.ImagePrice4K).
+		SetVideoRateIndependent(groupIn.VideoRateIndependent).
+		SetVideoRateMultiplier(groupIn.VideoRateMultiplier).
+		SetNillableVideoPrice480p(groupIn.VideoPrice480P).
+		SetNillableVideoPrice720p(groupIn.VideoPrice720P).
+		SetNillableVideoPrice1080p(groupIn.VideoPrice1080P).
+		SetVideoModelPrices(service.NormalizeVideoModelPrices(groupIn.VideoModelPrices)).
+		SetNillableWebSearchPricePerCall(groupIn.WebSearchPricePerCall).
+		SetNillableSearchPricePer1k(groupIn.SearchPricePer1k).
+		SetNillableAudioRealtimePricePerMin(groupIn.AudioRealtimePricePerMin).
+		SetNillableAudioTtsPricePerMillionChars(groupIn.AudioTTSPricePerMillionChars).
+		SetNillableAudioSttPricePerHour(groupIn.AudioSTTPricePerHour).
+		SetAllowOpenaiLongContextBilling(groupIn.AllowOpenAILongContextBilling).
+		SetAllowBlockedKeywordRequests(groupIn.AllowBlockedKeywordRequests).
+		SetDefaultValidityDays(groupIn.DefaultValidityDays).
+		SetClaudeCodeOnly(groupIn.ClaudeCodeOnly).
+		SetNillableFallbackGroupID(groupIn.FallbackGroupID).
+		SetNillableFallbackGroupIDOnInvalidRequest(groupIn.FallbackGroupIDOnInvalidRequest).
+		SetNillableFailoverGroupID(groupIn.FailoverGroupID).
+		SetFailoverStrategy(normalizePersistedFailoverStrategy(groupIn.FailoverStrategy)).
+		SetModelMapping(groupIn.ModelMapping).
+		SetWeightedModelMapping(cloneWeightedModelMappingForRepo(groupIn.WeightedModelMapping)).
+		SetFallbackModel(groupIn.FallbackModel).
+		SetModelRoutingEnabled(groupIn.ModelRoutingEnabled).
+		SetMcpXMLInject(groupIn.MCPXMLInject).
+		SetAllowMessagesDispatch(groupIn.AllowMessagesDispatch).
+		SetAllowLive(groupIn.AllowLive).
+		SetRequireOauthOnly(groupIn.RequireOAuthOnly).
+		SetRequirePrivacySet(groupIn.RequirePrivacySet).
+		SetDefaultMappedModel(groupIn.DefaultMappedModel).
+		SetMessagesDispatchModelConfig(groupIn.MessagesDispatchModelConfig).
+		SetModelsListConfig(groupIn.ModelsListConfig).
+		SetRpmLimit(groupIn.RPMLimit).
+		SetMaxReasoningEffort(groupIn.MaxReasoningEffort).
+		SetReasoningEffortMappings(groupIn.ReasoningEffortMappings)
+	if groupIn.BillingModelSource != "" {
+		builder = builder.SetBillingModelSource(groupIn.BillingModelSource)
+	}
+	if groupIn.DuplicateOperationID != "" {
+		builder = builder.SetDuplicateOperationID(groupIn.DuplicateOperationID)
+	}
+
+	// 设置模型路由配置
+	if groupIn.ModelRouting != nil {
+		builder = builder.SetModelRouting(groupIn.ModelRouting)
+	}
+
+	// 设置支持的模型系列（始终设置，空数组表示不限制）
+	builder = builder.SetSupportedModelScopes(groupIn.SupportedModelScopes)
+
+	created, err := builder.Save(ctx)
+	if err != nil {
+		return translatePersistenceError(err, nil, service.ErrGroupExists)
+	}
+	groupIn.ID = created.ID
+	groupIn.CreatedAt = created.CreatedAt
+	groupIn.UpdatedAt = created.UpdatedAt
+	return nil
+}
+
+func (r *groupRepository) FindByDuplicateOperationID(ctx context.Context, operationID string) (*service.Group, error) {
+	operationID = strings.TrimSpace(operationID)
+	if operationID == "" {
+		return nil, nil
+	}
+	row, err := r.client.Group.Query().
+		Where(group.DuplicateOperationIDEQ(operationID)).
+		Order(dbent.Asc(group.FieldID)).
+		First(ctx)
+	if dbent.IsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("find group duplicate operation: %w", err)
+	}
+	return groupEntityToService(row), nil
+}
+
+type groupDuplicateBinding struct {
+	accountID int64
+	priority  int
+}
+
+func validGroupDuplicateAccountPlatform(groupPlatform, accountPlatform string) bool {
+	if groupPlatform != service.PlatformComposite {
+		return accountPlatform == groupPlatform
+	}
+	switch accountPlatform {
+	case service.PlatformAnthropic, service.PlatformOpenAI, service.PlatformGemini, service.PlatformAntigravity,
+		service.PlatformGrok, service.PlatformKimi, service.PlatformZhipu, service.PlatformDeepseek:
+		return true
+	default:
+		return false
+	}
+}
+
+func loadValidGroupDuplicateBindings(ctx context.Context, executor sqlExecutor, sourceGroupID int64, target *service.Group) ([]groupDuplicateBinding, error) {
+	rows, err := executor.QueryContext(ctx, `
+		SELECT ag.account_id, ag.priority, a.id, a.platform, a.type, a.deleted_at
+		FROM account_groups ag
+		LEFT JOIN accounts a ON a.id = ag.account_id
+		WHERE ag.group_id = $1
+		ORDER BY ag.priority ASC, ag.account_id ASC`, sourceGroupID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	bindings := make([]groupDuplicateBinding, 0)
+	seen := make(map[int64]struct{})
+	for rows.Next() {
+		var accountID int64
+		var priority int
+		var liveAccountID sql.NullInt64
+		var platform sql.NullString
+		var accountType sql.NullString
+		var deletedAt sql.NullTime
+		if err := rows.Scan(&accountID, &priority, &liveAccountID, &platform, &accountType, &deletedAt); err != nil {
+			return nil, err
+		}
+		if !liveAccountID.Valid || deletedAt.Valid {
+			return nil, fmt.Errorf("%w: deleted or missing account_id=%d", service.ErrGroupDuplicateBindingInvalid, accountID)
+		}
+		if !platform.Valid || !validGroupDuplicateAccountPlatform(target.Platform, platform.String) {
+			return nil, fmt.Errorf("%w: account_id=%d expected_platform=%s actual_platform=%s", service.ErrGroupDuplicateBindingInvalid, accountID, target.Platform, platform.String)
+		}
+		if target.RequireOAuthOnly && (!accountType.Valid || accountType.String == service.AccountTypeAPIKey) {
+			return nil, fmt.Errorf("%w: API Key account_id=%d conflicts with require_oauth_only", service.ErrGroupDuplicateBindingInvalid, accountID)
+		}
+		if _, exists := seen[accountID]; exists {
+			return nil, fmt.Errorf("%w: duplicate account_id=%d", service.ErrGroupDuplicateBindingInvalid, accountID)
+		}
+		seen[accountID] = struct{}{}
+		bindings = append(bindings, groupDuplicateBinding{accountID: accountID, priority: priority})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	for model, accountIDs := range target.ModelRouting {
+		for _, accountID := range accountIDs {
+			if _, ok := seen[accountID]; !ok {
+				return nil, fmt.Errorf("%w: model=%s references unbound account_id=%d", service.ErrGroupDuplicateBindingInvalid, model, accountID)
+			}
+		}
+	}
+	return bindings, nil
+}
+
+// CreateFromSource 原子写入分组、副本账号优先级与调度事件。
+// 任一校验、绑定或 outbox（事件箱）失败都会回滚，禁止留下半成品分组。
+func (r *groupRepository) CreateFromSource(ctx context.Context, groupIn *service.Group, sourceGroupID int64) error {
+	if groupIn == nil {
+		return errors.New("group is nil")
+	}
+	tx, err := r.client.Tx(ctx)
+	if err != nil && !errors.Is(err, dbent.ErrTxStarted) {
+		return err
+	}
+	var txClient *dbent.Client
+	if err == nil {
+		defer func() { _ = tx.Rollback() }()
+		txClient = tx.Client()
+	} else {
+		// 已处于调用方事务时继续复用，保持所有写入共享同一事务边界。
+		txClient = r.client
+	}
+
+	source, err := txClient.Group.Query().Where(group.IDEQ(sourceGroupID)).ForShare().Only(ctx)
+	if err != nil {
+		return translatePersistenceError(err, service.ErrGroupNotFound, nil)
+	}
+	if source.Platform != groupIn.Platform {
+		return fmt.Errorf("%w: source platform changed expected=%s actual=%s", service.ErrGroupDuplicateBindingInvalid, groupIn.Platform, source.Platform)
+	}
+	bindings, err := loadValidGroupDuplicateBindings(ctx, txClient, sourceGroupID, groupIn)
+	if err != nil {
+		return err
+	}
+	if err := createGroupRecord(ctx, txClient, groupIn); err != nil {
+		return err
+	}
+
+	if len(bindings) > 0 {
+		builders := make([]*dbent.AccountGroupCreate, 0, len(bindings))
+		for _, binding := range bindings {
+			builders = append(builders, txClient.AccountGroup.Create().
+				SetAccountID(binding.accountID).
+				SetGroupID(groupIn.ID).
+				SetPriority(binding.priority))
+		}
+		if _, err := txClient.AccountGroup.CreateBulk(builders...).Save(ctx); err != nil {
+			return fmt.Errorf("copy group account bindings: %w", err)
+		}
+	}
+	// 聚合分组的路由与账号绑定共同决定真实上游和计费平台，必须与分组副本在
+	// 同一事务提交；否则可能出现“账号已经复制但别名路由丢失”的半成品分组。
+	if groupIn.Platform == service.PlatformComposite {
+		if _, err := txClient.ExecContext(ctx, `
+			INSERT INTO composite_model_routes (
+				group_id, public_model, match_type, target_platform, upstream_model,
+				endpoint, priority, enabled, notes, created_at, updated_at
+			)
+			SELECT $1, public_model, match_type, target_platform, upstream_model,
+				endpoint, priority, enabled, notes, NOW(), NOW()
+			FROM composite_model_routes
+			WHERE group_id = $2 AND deleted_at IS NULL
+			ORDER BY priority ASC, id ASC`, groupIn.ID, sourceGroupID); err != nil {
+			return fmt.Errorf("copy composite model routes: %w", err)
+		}
+	}
+	groupIn.AccountCount = int64(len(bindings))
+	if err := enqueueSchedulerOutbox(ctx, txClient, service.SchedulerOutboxEventGroupChanged, nil, &groupIn.ID, map[string]any{"action": "duplicate"}); err != nil {
+		return err
+	}
+
+	if tx != nil {
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+		r.syncSchedulerGroup(ctx, groupIn)
+	}
+	return nil
+}
+
+func (r *groupRepository) GetByID(ctx context.Context, id int64) (*service.Group, error) {
+	// 管理端编辑分组必须得到完整账号绑定。仅有账号数量不足以区分
+	// “分组为空”和“关联数据尚未加载”，后者绝不能被保存为解除所有绑定。
+	m, err := r.client.Group.Query().
+		Where(group.IDEQ(id)).
+		WithAccountGroups().
+		Only(ctx)
+	if err != nil {
+		return nil, translatePersistenceError(err, service.ErrGroupNotFound, nil)
+	}
+	out := groupEntityToService(m)
+	out.AccountBindingsLoaded = true
+	out.AccountGroups = make([]service.AccountGroup, 0, len(m.Edges.AccountGroups))
+	for _, binding := range m.Edges.AccountGroups {
+		if binding == nil {
+			continue
+		}
+		out.AccountGroups = append(out.AccountGroups, service.AccountGroup{
+			AccountID:    binding.AccountID,
+			GroupID:      binding.GroupID,
+			Priority:     binding.Priority,
+			ModelMapping: cloneAccountGroupModelMapping(binding.ModelMapping),
+			CreatedAt:    binding.CreatedAt,
+		})
+	}
+	counts, err := r.loadAccountCounts(ctx, []int64{out.ID})
+	if err == nil {
+		applyGroupAccountCounts(out, counts[out.ID])
+	}
+	return out, nil
+}
+
+func (r *groupRepository) GetByIDLite(ctx context.Context, id int64) (*service.Group, error) {
+	// AccountCount is intentionally not loaded here; use GetByID when needed.
+	m, err := r.client.Group.Query().
+		Where(group.IDEQ(id)).
+		Only(ctx)
+	if err != nil {
+		return nil, translatePersistenceError(err, service.ErrGroupNotFound, nil)
+	}
+	return groupEntityToService(m), nil
+}
+
+func (r *groupRepository) Update(ctx context.Context, groupIn *service.Group) error {
+	if groupIn == nil {
+		return errors.New("group is nil")
+	}
+	// 与创建路径使用同一归一化规则，保证旧的全量更新调用不会把新增列回写为零值。
+	groupIn.PeakRateEnabled, groupIn.PeakStart, groupIn.PeakEnd, groupIn.PeakRateMultiplier, groupIn.PeakTimezone = service.NormalizePeakRateConfig(
+		groupIn.PeakRateEnabled, groupIn.PeakStart, groupIn.PeakEnd, groupIn.PeakRateMultiplier, groupIn.PeakTimezone,
+	)
+	groupIn.SchedulingMode, _ = service.NormalizeGroupSchedulingMode(groupIn.SchedulingMode)
+	if groupIn.LocalOnly {
+		// local_only 是主站密钥的安全边界。必须先把拒绝态写入调度缓存，
+		// 再提交数据库更新；否则旧的 local_only=false 缓存会在同步窗口内短暂放行。
+		// 数据库后续失败时保留更严格的缓存状态是安全的，outbox/后续更新会完成修复。
+		if r.schedulerGroupCache == nil {
+			return errors.New("scheduler group cache is required for local-only group update")
+		}
+		if err := r.schedulerGroupCache.SetGroup(ctx, groupIn); err != nil {
+			return fmt.Errorf("prime local-only scheduler group cache: %w", err)
+		}
+	}
+	builder := r.client.Group.UpdateOneID(groupIn.ID).
+		SetName(groupIn.Name).
+		SetDescription(groupIn.Description).
+		SetPlatform(groupIn.Platform).
+		SetDisplayBrand(groupIn.DisplayBrand).
+		SetDisplayIcon(groupIn.DisplayIcon).
+		SetRateMultiplier(groupIn.RateMultiplier).
+		SetPeakRateEnabled(groupIn.PeakRateEnabled).
+		SetPeakStart(groupIn.PeakStart).
+		SetPeakEnd(groupIn.PeakEnd).
+		SetPeakRateMultiplier(groupIn.PeakRateMultiplier).
+		SetPeakTimezone(groupIn.PeakTimezone).
+		SetIsExclusive(groupIn.IsExclusive).
+		SetLocalOnly(groupIn.LocalOnly).
+		SetStatus(groupIn.Status).
+		SetSchedulingMode(groupIn.SchedulingMode).
+		SetPerUserConcurrency(groupIn.PerUserConcurrency).
+		SetSubscriptionType(groupIn.SubscriptionType).
+		SetNillableDailyLimitUsd(groupIn.DailyLimitUSD).
+		SetNillableWeeklyLimitUsd(groupIn.WeeklyLimitUSD).
+		SetNillableMonthlyLimitUsd(groupIn.MonthlyLimitUSD).
+		SetAllowImageGeneration(groupIn.AllowImageGeneration).
+		SetImageRateIndependent(groupIn.ImageRateIndependent).
+		SetImageRateMultiplier(groupIn.ImageRateMultiplier).
+		SetNillableImagePrice1k(groupIn.ImagePrice1K).
+		SetNillableImagePrice2k(groupIn.ImagePrice2K).
+		SetNillableImagePrice4k(groupIn.ImagePrice4K).
+		SetVideoRateIndependent(groupIn.VideoRateIndependent).
+		SetVideoRateMultiplier(groupIn.VideoRateMultiplier).
+		SetNillableVideoPrice480p(groupIn.VideoPrice480P).
+		SetNillableVideoPrice720p(groupIn.VideoPrice720P).
+		SetNillableVideoPrice1080p(groupIn.VideoPrice1080P).
+		SetVideoModelPrices(service.NormalizeVideoModelPrices(groupIn.VideoModelPrices)).
+		SetNillableWebSearchPricePerCall(groupIn.WebSearchPricePerCall).
+		SetNillableSearchPricePer1k(groupIn.SearchPricePer1k).
+		SetNillableAudioRealtimePricePerMin(groupIn.AudioRealtimePricePerMin).
+		SetNillableAudioTtsPricePerMillionChars(groupIn.AudioTTSPricePerMillionChars).
+		SetNillableAudioSttPricePerHour(groupIn.AudioSTTPricePerHour).
+		SetAllowOpenaiLongContextBilling(groupIn.AllowOpenAILongContextBilling).
+		SetAllowBlockedKeywordRequests(groupIn.AllowBlockedKeywordRequests).
+		SetDefaultValidityDays(groupIn.DefaultValidityDays).
+		SetClaudeCodeOnly(groupIn.ClaudeCodeOnly).
+		SetModelMapping(groupIn.ModelMapping).
+		SetWeightedModelMapping(cloneWeightedModelMappingForRepo(groupIn.WeightedModelMapping)).
+		SetFallbackModel(groupIn.FallbackModel).
+		SetNillableFailoverGroupID(groupIn.FailoverGroupID).
+		SetFailoverStrategy(normalizePersistedFailoverStrategy(groupIn.FailoverStrategy)).
+		SetModelRoutingEnabled(groupIn.ModelRoutingEnabled).
+		SetMcpXMLInject(groupIn.MCPXMLInject).
+		SetAllowMessagesDispatch(groupIn.AllowMessagesDispatch).
+		SetAllowLive(groupIn.AllowLive).
+		SetRequireOauthOnly(groupIn.RequireOAuthOnly).
+		SetRequirePrivacySet(groupIn.RequirePrivacySet).
+		SetDefaultMappedModel(groupIn.DefaultMappedModel).
+		SetMessagesDispatchModelConfig(groupIn.MessagesDispatchModelConfig).
+		SetModelsListConfig(groupIn.ModelsListConfig).
+		SetRpmLimit(groupIn.RPMLimit).
+		SetMaxReasoningEffort(groupIn.MaxReasoningEffort).
+		SetReasoningEffortMappings(groupIn.ReasoningEffortMappings)
+	if groupIn.BillingModelSource != "" {
+		builder = builder.SetBillingModelSource(groupIn.BillingModelSource)
+	} else {
+		builder = builder.ClearBillingModelSource()
+	}
+	if groupIn.MinimumTier != nil {
+		builder = builder.SetMinimumTier(*groupIn.MinimumTier)
+	} else {
+		builder = builder.ClearMinimumTier()
+	}
+
+	// 显式处理可空字段：nil 需要 clear，非 nil 需要 set。
+	if groupIn.DailyLimitUSD != nil {
+		builder = builder.SetDailyLimitUsd(*groupIn.DailyLimitUSD)
+	} else {
+		builder = builder.ClearDailyLimitUsd()
+	}
+	if groupIn.WeeklyLimitUSD != nil {
+		builder = builder.SetWeeklyLimitUsd(*groupIn.WeeklyLimitUSD)
+	} else {
+		builder = builder.ClearWeeklyLimitUsd()
+	}
+	if groupIn.MonthlyLimitUSD != nil {
+		builder = builder.SetMonthlyLimitUsd(*groupIn.MonthlyLimitUSD)
+	} else {
+		builder = builder.ClearMonthlyLimitUsd()
+	}
+	if groupIn.ImagePrice1K != nil {
+		builder = builder.SetImagePrice1k(*groupIn.ImagePrice1K)
+	} else {
+		builder = builder.ClearImagePrice1k()
+	}
+	if groupIn.ImagePrice2K != nil {
+		builder = builder.SetImagePrice2k(*groupIn.ImagePrice2K)
+	} else {
+		builder = builder.ClearImagePrice2k()
+	}
+	if groupIn.ImagePrice4K != nil {
+		builder = builder.SetImagePrice4k(*groupIn.ImagePrice4K)
+	} else {
+		builder = builder.ClearImagePrice4k()
+	}
+	if groupIn.VideoPrice480P != nil {
+		builder = builder.SetVideoPrice480p(*groupIn.VideoPrice480P)
+	} else {
+		builder = builder.ClearVideoPrice480p()
+	}
+	if groupIn.VideoPrice720P != nil {
+		builder = builder.SetVideoPrice720p(*groupIn.VideoPrice720P)
+	} else {
+		builder = builder.ClearVideoPrice720p()
+	}
+	if groupIn.VideoPrice1080P != nil {
+		builder = builder.SetVideoPrice1080p(*groupIn.VideoPrice1080P)
+	} else {
+		builder = builder.ClearVideoPrice1080p()
+	}
+	builder = builder.SetVideoModelPrices(service.NormalizeVideoModelPrices(groupIn.VideoModelPrices))
+	if groupIn.WebSearchPricePerCall != nil {
+		builder = builder.SetWebSearchPricePerCall(*groupIn.WebSearchPricePerCall)
+	} else {
+		builder = builder.ClearWebSearchPricePerCall()
+	}
+	if groupIn.SearchPricePer1k != nil {
+		builder = builder.SetSearchPricePer1k(*groupIn.SearchPricePer1k)
+	} else {
+		builder = builder.ClearSearchPricePer1k()
+	}
+	if groupIn.AudioRealtimePricePerMin != nil {
+		builder = builder.SetAudioRealtimePricePerMin(*groupIn.AudioRealtimePricePerMin)
+	} else {
+		builder = builder.ClearAudioRealtimePricePerMin()
+	}
+	if groupIn.AudioTTSPricePerMillionChars != nil {
+		builder = builder.SetAudioTtsPricePerMillionChars(*groupIn.AudioTTSPricePerMillionChars)
+	} else {
+		builder = builder.ClearAudioTtsPricePerMillionChars()
+	}
+	if groupIn.AudioSTTPricePerHour != nil {
+		builder = builder.SetAudioSttPricePerHour(*groupIn.AudioSTTPricePerHour)
+	} else {
+		builder = builder.ClearAudioSttPricePerHour()
+	}
+
+	// 处理 FallbackGroupID：nil 时清除，否则设置
+	if groupIn.FallbackGroupID != nil {
+		builder = builder.SetFallbackGroupID(*groupIn.FallbackGroupID)
+	} else {
+		builder = builder.ClearFallbackGroupID()
+	}
+	// 处理 FallbackGroupIDOnInvalidRequest：nil 时清除，否则设置
+	if groupIn.FallbackGroupIDOnInvalidRequest != nil {
+		builder = builder.SetFallbackGroupIDOnInvalidRequest(*groupIn.FallbackGroupIDOnInvalidRequest)
+	} else {
+		builder = builder.ClearFallbackGroupIDOnInvalidRequest()
+	}
+	// 跨分组兜底分组是可空字段；全量更新时 nil 明确表示清除，避免旧配置残留。
+	if groupIn.FailoverGroupID != nil {
+		builder = builder.SetFailoverGroupID(*groupIn.FailoverGroupID)
+	} else {
+		builder = builder.ClearFailoverGroupID()
+	}
+
+	// 处理 ModelRouting：nil 时清除，否则设置
+	if groupIn.ModelRouting != nil {
+		builder = builder.SetModelRouting(groupIn.ModelRouting)
+	} else {
+		builder = builder.ClearModelRouting()
+	}
+
+	// 处理 SupportedModelScopes（始终设置，空数组表示不限制）
+	builder = builder.SetSupportedModelScopes(groupIn.SupportedModelScopes)
+
+	updated, err := builder.Save(ctx)
+	if err != nil {
+		return translatePersistenceError(err, service.ErrGroupNotFound, service.ErrGroupExists)
+	}
+	groupIn.UpdatedAt = updated.UpdatedAt
+	r.syncSchedulerGroup(ctx, groupIn)
+	if err := enqueueSchedulerOutbox(ctx, r.sql, service.SchedulerOutboxEventGroupChanged, nil, &groupIn.ID, nil); err != nil {
+		logger.LegacyPrintf("repository.group", "[SchedulerOutbox] enqueue group update failed: group=%d err=%v", groupIn.ID, err)
+	}
+	return nil
+}
+
+func normalizePersistedFailoverStrategy(strategy string) string {
+	if normalized, ok := service.NormalizeGroupFailoverStrategy(strategy); ok {
+		return normalized
+	}
+	return service.FailoverStrategyOriginalModelFirst
+}
+
+func (r *groupRepository) Delete(ctx context.Context, id int64) error {
+	_, err := r.client.Group.Delete().Where(group.IDEQ(id)).Exec(ctx)
+	if err != nil {
+		return translatePersistenceError(err, service.ErrGroupNotFound, nil)
+	}
+	r.deleteSchedulerGroup(ctx, id)
+	if err := enqueueSchedulerOutbox(ctx, r.sql, service.SchedulerOutboxEventGroupChanged, nil, &id, nil); err != nil {
+		logger.LegacyPrintf("repository.group", "[SchedulerOutbox] enqueue group delete failed: group=%d err=%v", id, err)
+	}
+	return nil
+}
+
+func (r *groupRepository) List(ctx context.Context, params pagination.PaginationParams) ([]service.Group, *pagination.PaginationResult, error) {
+	return r.ListWithFilters(ctx, params, "", "", "", nil)
+}
+
+func (r *groupRepository) ListWithFilters(ctx context.Context, params pagination.PaginationParams, platform, status, search string, isExclusive *bool) ([]service.Group, *pagination.PaginationResult, error) {
+	q := r.client.Group.Query()
+	if service.PublishableGroupsOnly(ctx) {
+		q = q.Where(group.LocalOnlyEQ(false))
+	}
+
+	if platform != "" {
+		q = q.Where(group.PlatformEQ(platform))
+	}
+	if status != "" {
+		q = q.Where(group.StatusEQ(status))
+	}
+	if search != "" {
+		q = q.Where(group.Or(
+			group.NameContainsFold(search),
+			group.DescriptionContainsFold(search),
+		))
+	}
+	if isExclusive != nil {
+		q = q.Where(group.IsExclusiveEQ(*isExclusive))
+	}
+
+	total, err := q.Clone().Count(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if strings.EqualFold(strings.TrimSpace(params.SortBy), "account_count") {
+		return r.listWithAccountCountSort(ctx, q, params, total)
+	}
+
+	groupsQuery := q.
+		Offset(params.Offset()).
+		Limit(params.Limit())
+	for _, order := range groupListOrder(params) {
+		groupsQuery = groupsQuery.Order(order)
+	}
+
+	groups, err := groupsQuery.All(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	groupIDs := make([]int64, 0, len(groups))
+	outGroups := make([]service.Group, 0, len(groups))
+	for i := range groups {
+		g := groupEntityToService(groups[i])
+		outGroups = append(outGroups, *g)
+		groupIDs = append(groupIDs, g.ID)
+	}
+
+	counts, err := r.loadAccountCounts(ctx, groupIDs)
+	if err == nil {
+		for i := range outGroups {
+			applyGroupAccountCounts(&outGroups[i], counts[outGroups[i].ID])
+		}
+	}
+
+	return outGroups, paginationResultFromTotal(int64(total), params), nil
+}
+
+func (r *groupRepository) listWithAccountCountSort(ctx context.Context, q *dbent.GroupQuery, params pagination.PaginationParams, total int) ([]service.Group, *pagination.PaginationResult, error) {
+	// 第一步：只查 ID + sort_order（轻量，不做分页 — 需要全量排序 account_count）。
+	rows, err := q.Clone().
+		Select(group.FieldID, group.FieldSortOrder).
+		Order(dbent.Asc(group.FieldSortOrder), dbent.Asc(group.FieldID)).
+		All(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	type sortEntry struct {
+		id           int64
+		sortOrder    int
+		accountCount int64
+	}
+	entries := make([]sortEntry, 0, len(rows))
+	groupIDs := make([]int64, len(rows))
+	for i, r := range rows {
+		groupIDs[i] = r.ID
+		entries = append(entries, sortEntry{id: r.ID, sortOrder: r.SortOrder})
+	}
+
+	// 第二步：批量加载 account counts（一次 SQL）。
+	counts, err := r.loadAccountCounts(ctx, groupIDs)
+	if err != nil {
+		return nil, nil, err
+	}
+	for i := range entries {
+		c := counts[entries[i].id]
+		if c.Total > 0 {
+			entries[i].accountCount = c.Total
+		}
+	}
+
+	// 第三步：Go 侧排序（数据量 = Group 总数，通常 < 200，安全）。
+	sortOrder := params.NormalizedSortOrder(pagination.SortOrderDesc)
+	tieCmp := func(a, b sortEntry) bool {
+		if a.sortOrder == b.sortOrder {
+			return a.id < b.id
+		}
+		return a.sortOrder < b.sortOrder
+	}
+	sort.SliceStable(entries, func(i, j int) bool {
+		if entries[i].accountCount == entries[j].accountCount {
+			return tieCmp(entries[i], entries[j])
+		}
+		if sortOrder == pagination.SortOrderAsc {
+			return entries[i].accountCount < entries[j].accountCount
+		}
+		return entries[i].accountCount > entries[j].accountCount
+	})
+
+	// 第四步：分页，只加载当前页需要的完整 Group。
+	page := paginateSlice(entries, params)
+	if len(page) == 0 {
+		return nil, paginationResultFromTotal(int64(total), params), nil
+	}
+
+	pageIDs := make([]int64, len(page))
+	pageIdx := make(map[int64]int, len(page))
+	for i, e := range page {
+		pageIDs[i] = e.id
+		pageIdx[e.id] = i
+	}
+
+	groups, err := r.client.Group.Query().
+		Where(group.IDIn(pageIDs...)).
+		All(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	outGroups := make([]service.Group, len(page))
+	for i := range groups {
+		g := groupEntityToService(groups[i])
+		applyGroupAccountCounts(g, counts[g.ID])
+		if idx, ok := pageIdx[g.ID]; ok {
+			outGroups[idx] = *g
+		}
+	}
+
+	return outGroups, paginationResultFromTotal(int64(total), params), nil
+}
+
+func groupListOrder(params pagination.PaginationParams) []func(*entsql.Selector) {
+	sortBy := strings.ToLower(strings.TrimSpace(params.SortBy))
+	sortOrder := params.NormalizedSortOrder(pagination.SortOrderAsc)
+
+	var field string
+	tieField := group.FieldID
+	defaultOrder := true
+	switch sortBy {
+	case "", "sort_order":
+		field = group.FieldSortOrder
+	case "name":
+		field = group.FieldName
+		defaultOrder = false
+	case "platform":
+		field = group.FieldPlatform
+		defaultOrder = false
+	case "billing_type", "subscription_type":
+		field = group.FieldSubscriptionType
+		defaultOrder = false
+	case "rate_multiplier":
+		field = group.FieldRateMultiplier
+		defaultOrder = false
+	case "is_exclusive":
+		field = group.FieldIsExclusive
+		defaultOrder = false
+	case "status":
+		field = group.FieldStatus
+		defaultOrder = false
+	case "created_at":
+		field = group.FieldCreatedAt
+		defaultOrder = false
+	case "id":
+		field = group.FieldID
+		defaultOrder = false
+		tieField = ""
+	default:
+		field = group.FieldSortOrder
+	}
+
+	if sortOrder == pagination.SortOrderDesc && sortBy != "" {
+		if tieField == "" {
+			return []func(*entsql.Selector){dbent.Desc(field)}
+		}
+		return []func(*entsql.Selector){dbent.Desc(field), dbent.Desc(tieField)}
+	}
+	if defaultOrder {
+		return []func(*entsql.Selector){dbent.Asc(group.FieldSortOrder), dbent.Asc(group.FieldID)}
+	}
+	if tieField == "" {
+		return []func(*entsql.Selector){dbent.Asc(field)}
+	}
+	return []func(*entsql.Selector){dbent.Asc(field), dbent.Asc(tieField)}
+}
+
+func (r *groupRepository) ListActive(ctx context.Context) ([]service.Group, error) {
+	groups, err := r.client.Group.Query().
+		Where(group.StatusEQ(service.StatusActive)).
+		Order(dbent.Asc(group.FieldSortOrder), dbent.Asc(group.FieldID)).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	groupIDs := make([]int64, 0, len(groups))
+	outGroups := make([]service.Group, 0, len(groups))
+	for i := range groups {
+		g := groupEntityToService(groups[i])
+		outGroups = append(outGroups, *g)
+		groupIDs = append(groupIDs, g.ID)
+	}
+
+	counts, err := r.loadAccountCounts(ctx, groupIDs)
+	if err == nil {
+		for i := range outGroups {
+			applyGroupAccountCounts(&outGroups[i], counts[outGroups[i].ID])
+		}
+	}
+
+	return outGroups, nil
+}
+
+func (r *groupRepository) ListActiveIDs(ctx context.Context) ([]int64, error) {
+	rows, err := r.client.Group.Query().
+		Where(group.StatusEQ(service.StatusActive)).
+		Order(dbent.Asc(group.FieldID)).
+		Select(group.FieldID).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]int64, 0, len(rows))
+	for _, row := range rows {
+		if row.ID > 0 {
+			ids = append(ids, row.ID)
+		}
+	}
+	return ids, nil
+}
+
+func (r *groupRepository) ListActiveByPlatform(ctx context.Context, platform string) ([]service.Group, error) {
+	groups, err := r.client.Group.Query().
+		Where(group.StatusEQ(service.StatusActive), group.PlatformEQ(platform)).
+		Order(dbent.Asc(group.FieldSortOrder), dbent.Asc(group.FieldID)).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	groupIDs := make([]int64, 0, len(groups))
+	outGroups := make([]service.Group, 0, len(groups))
+	for i := range groups {
+		g := groupEntityToService(groups[i])
+		outGroups = append(outGroups, *g)
+		groupIDs = append(groupIDs, g.ID)
+	}
+
+	counts, err := r.loadAccountCounts(ctx, groupIDs)
+	if err == nil {
+		for i := range outGroups {
+			applyGroupAccountCounts(&outGroups[i], counts[outGroups[i].ID])
+		}
+	}
+
+	return outGroups, nil
+}
+
+func (r *groupRepository) ExistsByName(ctx context.Context, name string) (bool, error) {
+	return r.client.Group.Query().Where(group.NameEQ(name)).Exist(ctx)
+}
+
+// ExistsByIDs 批量检查分组是否存在（仅检查未软删除记录）。
+// 返回结构：map[groupID]exists。
+func (r *groupRepository) ExistsByIDs(ctx context.Context, ids []int64) (map[int64]bool, error) {
+	result := make(map[int64]bool, len(ids))
+	if len(ids) == 0 {
+		return result, nil
+	}
+
+	uniqueIDs := make([]int64, 0, len(ids))
+	seen := make(map[int64]struct{}, len(ids))
+	for _, id := range ids {
+		if id <= 0 {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		uniqueIDs = append(uniqueIDs, id)
+		result[id] = false
+	}
+	if len(uniqueIDs) == 0 {
+		return result, nil
+	}
+
+	rows, err := r.sql.QueryContext(ctx, `
+		SELECT id
+		FROM groups
+		WHERE id = ANY($1) AND deleted_at IS NULL
+	`, pq.Array(uniqueIDs))
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		result[id] = true
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (r *groupRepository) GetAccountCount(ctx context.Context, groupID int64) (total int64, active int64, err error) {
+	var rateLimited int64
+	err = scanSingleRow(ctx, r.sql,
+		fmt.Sprintf(`SELECT
+			COUNT(*) FILTER (WHERE a.deleted_at IS NULL),
+			COUNT(*) FILTER (WHERE %s),
+			COUNT(*) FILTER (WHERE %s)
+		FROM account_groups ag JOIN accounts a ON a.id = ag.account_id
+		WHERE ag.group_id = $1`, groupAccountAvailableSQL, groupAccountTemporarilyLimitedSQL),
+		[]any{groupID}, &total, &active, &rateLimited)
+	return
+}
+
+func (r *groupRepository) DeleteAccountGroupsByGroupID(ctx context.Context, groupID int64) (int64, error) {
+	res, err := r.sql.ExecContext(ctx, "DELETE FROM account_groups WHERE group_id = $1", groupID)
+	if err != nil {
+		return 0, err
+	}
+	affected, _ := res.RowsAffected()
+	if err := enqueueSchedulerOutbox(ctx, r.sql, service.SchedulerOutboxEventGroupChanged, nil, &groupID, nil); err != nil {
+		logger.LegacyPrintf("repository.group", "[SchedulerOutbox] enqueue group account clear failed: group=%d err=%v", groupID, err)
+	}
+	return affected, nil
+}
+
+func (r *groupRepository) DeleteCascade(ctx context.Context, id int64) ([]int64, error) {
+	g, err := r.client.Group.Query().Where(group.IDEQ(id)).Only(ctx)
+	if err != nil {
+		return nil, translatePersistenceError(err, service.ErrGroupNotFound, nil)
+	}
+	groupSvc := groupEntityToService(g)
+
+	// 使用 ent 事务统一包裹：避免手工基于 *sql.Tx 构造 ent client 带来的驱动断言问题，
+	// 同时保证级联删除的原子性。
+	tx, err := r.client.Tx(ctx)
+	if err != nil && !errors.Is(err, dbent.ErrTxStarted) {
+		return nil, err
+	}
+	exec := r.client
+	txClient := r.client
+	if err == nil {
+		defer func() { _ = tx.Rollback() }()
+		exec = tx.Client()
+		txClient = exec
+	}
+	// err 为 dbent.ErrTxStarted 时，复用当前 client 参与同一事务。
+
+	// Lock the group row to avoid concurrent writes while we cascade.
+	// 这里使用 exec.QueryContext 手动扫描，确保同一事务内加锁并能区分"未找到"与其他错误。
+	rows, err := exec.QueryContext(ctx, "SELECT id FROM groups WHERE id = $1 AND deleted_at IS NULL FOR UPDATE", id)
+	if err != nil {
+		return nil, err
+	}
+	var lockedID int64
+	if rows.Next() {
+		if err := rows.Scan(&lockedID); err != nil {
+			_ = rows.Close()
+			return nil, err
+		}
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if lockedID == 0 {
+		return nil, service.ErrGroupNotFound
+	}
+
+	var affectedUserIDs []int64
+	if groupSvc.IsSubscriptionType() {
+		// 只查询未软删除的订阅，避免通知已取消订阅的用户
+		rows, err := exec.QueryContext(ctx, "SELECT user_id FROM user_subscriptions WHERE group_id = $1 AND deleted_at IS NULL", id)
+		if err != nil {
+			return nil, err
+		}
+		for rows.Next() {
+			var userID int64
+			if scanErr := rows.Scan(&userID); scanErr != nil {
+				_ = rows.Close()
+				return nil, scanErr
+			}
+			affectedUserIDs = append(affectedUserIDs, userID)
+		}
+		if err := rows.Close(); err != nil {
+			return nil, err
+		}
+		if err := rows.Err(); err != nil {
+			return nil, err
+		}
+
+		// 软删除订阅：设置 deleted_at 而非硬删除
+		if _, err := exec.ExecContext(ctx, "UPDATE user_subscriptions SET deleted_at = NOW() WHERE group_id = $1 AND deleted_at IS NULL", id); err != nil {
+			return nil, err
+		}
+	}
+
+	// 2. Remove the group id from user_allowed_groups join table.
+	// Legacy users.allowed_groups 列已弃用，不再同步。
+	if _, err := exec.ExecContext(ctx, "DELETE FROM user_allowed_groups WHERE group_id = $1", id); err != nil {
+		return nil, err
+	}
+
+	// 3. Delete account_groups join rows.
+	if _, err := exec.ExecContext(ctx, "DELETE FROM account_groups WHERE group_id = $1", id); err != nil {
+		return nil, err
+	}
+
+	// 分组本身使用 soft delete（软删除），不会触发数据库外键的 ON DELETE CASCADE。
+	// 路由必须在同一事务内同步软删除，否则后台会留下无法维护的孤儿规则。
+	if _, err := exec.ExecContext(ctx, `
+		UPDATE composite_model_routes
+		SET deleted_at = NOW(), updated_at = NOW()
+		WHERE group_id = $1 AND deleted_at IS NULL`, id); err != nil {
+		return nil, err
+	}
+
+	// 4. Soft-delete group itself.
+	if _, err := txClient.Group.Delete().Where(group.IDEQ(id)).Exec(ctx); err != nil {
+		return nil, err
+	}
+
+	if tx != nil {
+		if err := tx.Commit(); err != nil {
+			return nil, err
+		}
+	}
+	if err := enqueueSchedulerOutbox(ctx, r.sql, service.SchedulerOutboxEventGroupChanged, nil, &id, nil); err != nil {
+		logger.LegacyPrintf("repository.group", "[SchedulerOutbox] enqueue group cascade delete failed: group=%d err=%v", id, err)
+	}
+	r.deleteSchedulerGroup(ctx, id)
+
+	return affectedUserIDs, nil
+}
+
+func (r *groupRepository) syncSchedulerGroup(ctx context.Context, group *service.Group) {
+	if r.schedulerGroupCache == nil || group == nil {
+		return
+	}
+	if err := r.schedulerGroupCache.SetGroup(ctx, group); err != nil {
+		// Database state is already committed; the outbox remains the repair path.
+		logger.LegacyPrintf("repository.group", "[SchedulerCache] sync group failed: group=%d err=%v", group.ID, err)
+	}
+}
+
+func (r *groupRepository) deleteSchedulerGroup(ctx context.Context, groupID int64) {
+	if r.schedulerGroupCache == nil || groupID <= 0 {
+		return
+	}
+	if err := r.schedulerGroupCache.DeleteGroup(ctx, groupID); err != nil {
+		logger.LegacyPrintf("repository.group", "[SchedulerCache] delete group failed: group=%d err=%v", groupID, err)
+	}
+}
+
+type groupAccountCounts struct {
+	Total                    int64
+	Active                   int64
+	RateLimited              int64
+	OpenAILongContextBilling int64
+	OpenAIStandardBilling    int64
+}
+
+const (
+	// 分组页的"可用"账号数必须与账号仓储的 ListSchedulableByGroupID 过滤口径一致。
+	groupAccountAvailableSQL = `a.deleted_at IS NULL
+				AND a.status = 'active'
+				AND a.schedulable = true
+				AND (a.expires_at IS NULL OR a.expires_at > NOW() OR a.auto_pause_on_expired = FALSE)
+				AND (a.rate_limit_reset_at IS NULL OR a.rate_limit_reset_at <= NOW())
+				AND (a.overload_until IS NULL OR a.overload_until <= NOW())
+				AND (a.temp_unschedulable_until IS NULL OR a.temp_unschedulable_until <= NOW())`
+
+	// 这里沿用历史字段名 RateLimitedAccountCount，但统计的是会让账号暂时退出调度的时间窗口。
+	groupAccountTemporarilyLimitedSQL = `a.deleted_at IS NULL
+				AND a.status = 'active'
+				AND a.schedulable = true
+				AND (a.expires_at IS NULL OR a.expires_at > NOW() OR a.auto_pause_on_expired = FALSE)
+				AND (
+					a.rate_limit_reset_at > NOW() OR
+					a.overload_until > NOW() OR
+					a.temp_unschedulable_until > NOW()
+				)`
+
+	// 长上下文资格只看持久状态，故意忽略临时 429、过载和冷却窗口。
+	groupOpenAIPersistentBillingCandidateSQL = `a.deleted_at IS NULL
+				AND a.platform = 'openai'
+				AND a.status = 'active'
+				AND a.schedulable = true
+				AND (a.expires_at IS NULL OR a.expires_at > NOW() OR a.auto_pause_on_expired = FALSE)
+				AND (NOT g.require_oauth_only OR a.type <> 'apikey')
+				AND (NOT g.require_privacy_set OR COALESCE(a.extra->>'privacy_mode', '') = 'training_off')`
+	groupOpenAILongContextBillingSQL = groupOpenAIPersistentBillingCandidateSQL + `
+				AND COALESCE(a.extra->'openai_long_context_billing_enabled', 'false'::jsonb) = 'true'::jsonb`
+	groupOpenAIStandardBillingSQL = groupOpenAIPersistentBillingCandidateSQL + `
+				AND COALESCE(a.extra->'openai_long_context_billing_enabled', 'false'::jsonb) <> 'true'::jsonb`
+)
+
+func (r *groupRepository) loadAccountCounts(ctx context.Context, groupIDs []int64) (counts map[int64]groupAccountCounts, err error) {
+	counts = make(map[int64]groupAccountCounts, len(groupIDs))
+	if len(groupIDs) == 0 {
+		return counts, nil
+	}
+
+	rows, err := r.sql.QueryContext(
+		ctx,
+		fmt.Sprintf(`SELECT ag.group_id,
+			COUNT(*) FILTER (WHERE a.deleted_at IS NULL) AS total,
+			COUNT(*) FILTER (WHERE %s) AS active,
+			COUNT(*) FILTER (WHERE %s) AS rate_limited,
+			COUNT(*) FILTER (WHERE %s) AS openai_long_context_billing,
+			COUNT(*) FILTER (WHERE %s) AS openai_standard_billing
+		FROM account_groups ag
+		JOIN accounts a ON a.id = ag.account_id
+		JOIN groups g ON g.id = ag.group_id
+		WHERE ag.group_id = ANY($1)
+		GROUP BY ag.group_id`, groupAccountAvailableSQL, groupAccountTemporarilyLimitedSQL, groupOpenAILongContextBillingSQL, groupOpenAIStandardBillingSQL),
+		pq.Array(groupIDs),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil && err == nil {
+			err = closeErr
+			counts = nil
+		}
+	}()
+
+	for rows.Next() {
+		var groupID int64
+		var c groupAccountCounts
+		if err = rows.Scan(&groupID, &c.Total, &c.Active, &c.RateLimited, &c.OpenAILongContextBilling, &c.OpenAIStandardBilling); err != nil {
+			return nil, err
+		}
+		counts[groupID] = c
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return counts, nil
+}
+
+func applyGroupAccountCounts(group *service.Group, counts groupAccountCounts) {
+	if group == nil {
+		return
+	}
+	group.AccountCount = counts.Total
+	group.ActiveAccountCount = counts.Active
+	group.RateLimitedAccountCount = counts.RateLimited
+	group.OpenAILongContextBillingAccountCount = counts.OpenAILongContextBilling
+	group.OpenAIStandardBillingAccountCount = counts.OpenAIStandardBilling
+	group.RefreshOpenAILongContextBillingStatus()
+}
+
+// GetAccountIDsByGroupIDs 获取多个分组的所有账号 ID（去重）
+func (r *groupRepository) GetAccountIDsByGroupIDs(ctx context.Context, groupIDs []int64) ([]int64, error) {
+	if len(groupIDs) == 0 {
+		return nil, nil
+	}
+
+	rows, err := r.sql.QueryContext(
+		ctx,
+		"SELECT DISTINCT account_id FROM account_groups WHERE group_id = ANY($1) ORDER BY account_id",
+		pq.Array(groupIDs),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+
+	var accountIDs []int64
+	for rows.Next() {
+		var accountID int64
+		if err := rows.Scan(&accountID); err != nil {
+			return nil, err
+		}
+		accountIDs = append(accountIDs, accountID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return accountIDs, nil
+}
+
+// BindAccountsToGroup 将多个账号绑定到指定分组（批量插入，忽略已存在的绑定）
+func (r *groupRepository) BindAccountsToGroup(ctx context.Context, groupID int64, accountIDs []int64) error {
+	if len(accountIDs) == 0 {
+		return nil
+	}
+
+	// 使用 INSERT ... ON CONFLICT DO NOTHING 忽略已存在的绑定
+	_, err := r.sql.ExecContext(
+		ctx,
+		`INSERT INTO account_groups (account_id, group_id, priority, created_at)
+		 SELECT unnest($1::bigint[]), $2, 50, NOW()
+		 ON CONFLICT (account_id, group_id) DO NOTHING`,
+		pq.Array(accountIDs),
+		groupID,
+	)
+	if err != nil {
+		return err
+	}
+
+	// 发送调度器事件
+	if err := enqueueSchedulerOutbox(ctx, r.sql, service.SchedulerOutboxEventGroupChanged, nil, &groupID, nil); err != nil {
+		logger.LegacyPrintf("repository.group", "[SchedulerOutbox] enqueue bind accounts to group failed: group=%d err=%v", groupID, err)
+	}
+
+	return nil
+}
+
+// UpdateSortOrders 批量更新分组排序
+func (r *groupRepository) UpdateSortOrders(ctx context.Context, updates []service.GroupSortOrderUpdate) error {
+	if len(updates) == 0 {
+		return nil
+	}
+
+	// 去重后保留最后一次排序值，避免重复 ID 造成 CASE 分支冲突。
+	sortOrderByID := make(map[int64]int, len(updates))
+	groupIDs := make([]int64, 0, len(updates))
+	for _, u := range updates {
+		if u.ID <= 0 {
+			continue
+		}
+		if _, exists := sortOrderByID[u.ID]; !exists {
+			groupIDs = append(groupIDs, u.ID)
+		}
+		sortOrderByID[u.ID] = u.SortOrder
+	}
+	if len(groupIDs) == 0 {
+		return nil
+	}
+
+	// 与旧实现保持一致：任何不存在/已删除的分组都返回 not found，且不执行更新。
+	var existingCount int
+	if err := scanSingleRow(
+		ctx,
+		r.sql,
+		`SELECT COUNT(*) FROM groups WHERE deleted_at IS NULL AND id = ANY($1)`,
+		[]any{pq.Array(groupIDs)},
+		&existingCount,
+	); err != nil {
+		return err
+	}
+	if existingCount != len(groupIDs) {
+		return service.ErrGroupNotFound
+	}
+
+	args := make([]any, 0, len(groupIDs)*2+1)
+	caseClauses := make([]string, 0, len(groupIDs))
+	placeholder := 1
+	for _, id := range groupIDs {
+		caseClauses = append(caseClauses, fmt.Sprintf("WHEN $%d THEN $%d", placeholder, placeholder+1))
+		args = append(args, id, sortOrderByID[id])
+		placeholder += 2
+	}
+	args = append(args, pq.Array(groupIDs))
+
+	query := fmt.Sprintf(`
+		UPDATE groups
+		SET sort_order = CASE id
+			%s
+			ELSE sort_order
+		END
+		WHERE deleted_at IS NULL AND id = ANY($%d)
+	`, strings.Join(caseClauses, "\n\t\t\t"), placeholder)
+
+	result, err := r.sql.ExecContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affected != int64(len(groupIDs)) {
+		return service.ErrGroupNotFound
+	}
+
+	for _, id := range groupIDs {
+		if err := enqueueSchedulerOutbox(ctx, r.sql, service.SchedulerOutboxEventGroupChanged, nil, &id, nil); err != nil {
+			logger.LegacyPrintf("repository.group", "[SchedulerOutbox] enqueue group sort update failed: group=%d err=%v", id, err)
+		}
+	}
+	return nil
+}
+
+// cloneWeightedModelMappingForRepo 把 service 层的智能分流映射克隆成 ent 需要的
+// 泛型 JSON 形态，并保证 nil 落库为空对象（与列默认值一致）。
+func cloneWeightedModelMappingForRepo(mapping map[string][]service.WeightedModelTarget) map[string][]map[string]any {
+	if len(mapping) == 0 {
+		return map[string][]map[string]any{}
+	}
+	out := make(map[string][]map[string]any, len(mapping))
+	for source, targets := range mapping {
+		rows := make([]map[string]any, 0, len(targets))
+		for _, target := range targets {
+			rows = append(rows, map[string]any{"model": target.Model, "weight": target.Weight})
+		}
+		out[source] = rows
+	}
+	return out
+}
+
+// [v0.2.5 新增]
+func NewAdminGroupRepository(client *dbent.Client, sqlDB *sql.DB) service.AdminGroupRepository {
+	return newGroupRepositoryWithSQL(client, sqlDB)
+}
+
+// [v0.2.5 新增]
+func (r *groupRepository) DeleteCascadeIfEmpty(ctx context.Context, id int64) ([]int64, error) {
+	return r.deleteCascade(ctx, id, true)
+}
+
+// [v0.2.5 新增]
+func (r *groupRepository) deleteCascade(ctx context.Context, id int64, requireEmpty bool) ([]int64, error) {
+	// 使用 ent 事务统一包裹：避免手工基于 *sql.Tx 构造 ent client 带来的驱动断言问题，
+	// 同时保证级联删除的原子性。
+	tx, err := r.client.Tx(ctx)
+	if err != nil && !errors.Is(err, dbent.ErrTxStarted) {
+		return nil, err
+	}
+	exec := r.client
+	txClient := r.client
+	if err == nil {
+		defer func() { _ = tx.Rollback() }()
+		exec = tx.Client()
+		txClient = exec
+	}
+	// err 为 dbent.ErrTxStarted 时，复用当前 client 参与同一事务。
+
+	// Lock the group row to avoid concurrent writes while we cascade.
+	// 这里使用 exec.QueryContext 手动扫描，确保同一事务内加锁并能区分"未找到"与其他错误。
+	rows, err := exec.QueryContext(ctx, "SELECT id, subscription_type FROM groups WHERE id = $1 AND deleted_at IS NULL FOR UPDATE", id)
+	if err != nil {
+		return nil, err
+	}
+	var lockedID int64
+	var subscriptionType string
+	if rows.Next() {
+		if err := rows.Scan(&lockedID, &subscriptionType); err != nil {
+			_ = rows.Close()
+			return nil, err
+		}
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if lockedID == 0 {
+		return nil, service.ErrGroupNotFound
+	}
+	if requireEmpty {
+		var hasAccount bool
+		if err := scanSingleRow(ctx, exec, `SELECT EXISTS (
+			SELECT 1 FROM account_groups ag
+			JOIN accounts a ON a.id = ag.account_id
+			WHERE ag.group_id = $1 AND a.deleted_at IS NULL
+		)`, []any{id}, &hasAccount); err != nil {
+			return nil, err
+		}
+		if hasAccount {
+			return nil, service.ErrGroupNotEmpty
+		}
+	}
+
+	var affectedUserIDs []int64
+	if subscriptionType == service.SubscriptionTypeSubscription {
+		// 只查询未软删除的订阅，避免通知已取消订阅的用户
+		rows, err := exec.QueryContext(ctx, "SELECT user_id FROM user_subscriptions WHERE group_id = $1 AND deleted_at IS NULL", id)
+		if err != nil {
+			return nil, err
+		}
+		for rows.Next() {
+			var userID int64
+			if scanErr := rows.Scan(&userID); scanErr != nil {
+				_ = rows.Close()
+				return nil, scanErr
+			}
+			affectedUserIDs = append(affectedUserIDs, userID)
+		}
+		if err := rows.Close(); err != nil {
+			return nil, err
+		}
+		if err := rows.Err(); err != nil {
+			return nil, err
+		}
+
+		// 软删除订阅：设置 deleted_at 而非硬删除
+		if _, err := exec.ExecContext(ctx, "UPDATE user_subscriptions SET deleted_at = NOW() WHERE group_id = $1 AND deleted_at IS NULL", id); err != nil {
+			return nil, err
+		}
+	}
+
+	// 2. Remove the group id from user_allowed_groups join table.
+	// Legacy users.allowed_groups 列已弃用，不再同步。
+	if _, err := exec.ExecContext(ctx, "DELETE FROM user_allowed_groups WHERE group_id = $1", id); err != nil {
+		return nil, err
+	}
+
+	// 3. Delete account_groups join rows.
+	if _, err := exec.ExecContext(ctx, "DELETE FROM account_groups WHERE group_id = $1", id); err != nil {
+		return nil, err
+	}
+
+	// 4. Soft-delete composite model routes owned by this group.
+	if _, err := exec.ExecContext(ctx, "UPDATE composite_model_routes SET deleted_at = NOW() WHERE group_id = $1 AND deleted_at IS NULL", id); err != nil {
+		return nil, err
+	}
+
+	// 5. Soft-delete group itself.
+	if _, err := txClient.Group.Delete().Where(group.IDEQ(id)).Exec(ctx); err != nil {
+		return nil, err
+	}
+
+	if tx != nil {
+		if err := tx.Commit(); err != nil {
+			return nil, err
+		}
+	}
+	if err := enqueueSchedulerOutbox(ctx, r.sql, service.SchedulerOutboxEventGroupChanged, nil, &id, nil); err != nil {
+		logger.LegacyPrintf("repository.group", "[SchedulerOutbox] enqueue group cascade delete failed: group=%d err=%v", id, err)
+	}
+
+	return affectedUserIDs, nil
+}

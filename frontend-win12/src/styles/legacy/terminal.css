@@ -1,0 +1,59 @@
+
+.term {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #0c0c0c;
+  color: #cccccc;
+  font-family: 'Cascadia Mono', Consolas, 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  cursor: text;
+  user-select: text;
+}
+
+.term-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 10px 14px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.term-line .prompt {
+  color: #4ec9b0;
+}
+
+.term-line .err {
+  color: #f48771;
+}
+
+.term-line .ok {
+  color: #569cd6;
+}
+
+.term-input-row {
+  display: flex;
+  padding: 0 14px 12px;
+}
+
+.term-input-row .prompt {
+  color: #4ec9b0;
+  flex: none;
+  margin-right: 8px;
+  white-space: pre;
+}
+
+.term-input {
+  flex: 1;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  caret-color: #cccccc;
+}
+
+/* ==================== Ant Design Fluent 化抛光 ==================== */

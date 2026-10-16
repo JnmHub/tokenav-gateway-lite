@@ -1,0 +1,131 @@
+/* ============================================================
+ * 案 D · 曜黑锐利（data-style="obsidian"）
+ * ------------------------------------------------------------
+ * 气质：纯黑/纯白画布 + 锐利直角 + 高对比描边 + 极弱玻璃，像一台工业仪表：
+ *       没有柔光、没有圆润、没有厚投影，一切靠 1px 硬线和黑白对比说话。
+ * 与其它四案的区分轴（浅色下尤其明显）：
+ *   画布＝纯白 #ffffff（无灰无彩）/ 卡片＝纯白 + 深描边 / 投影＝硬基线而非柔影 /
+ *   圆角＝4px（全案最锐）/ 玻璃＝最弱 / 文字＝近纯黑
+ * ============================================================ */
+
+/* —— Light 令牌 —— */
+:root[data-style="obsidian"] {
+  --text: #0a0a0a;
+  --text2: #4a4a4a;
+  --dicon-icon: #0a0a0a;
+  --dicon-fg: #0a0a0a;
+  --dicon-shadow: 0 1px 2px #ffffffe6, 0 0 3px #ffffffb3;
+  --bg50: rgba(255, 255, 255, 0.92);
+  --bg70: rgba(255, 255, 255, 0.96);
+  --unfoc: #f7f7f7;
+  --card: rgba(255, 255, 255, 0.95);
+  --surface: #ffffff;
+  --ctx: rgba(255, 255, 255, 0.97);
+  --contextmeu: rgba(255, 255, 255, 0.97);
+  --hover: rgba(0, 0, 0, 0.05);
+  --hover-b: rgba(0, 0, 0, 0.09);
+  --hr: rgba(0, 0, 0, 0.28);
+  --shadow: rgba(0, 0, 0, 0.16);
+  --s3d: rgba(0, 0, 0, 0.12);
+  --radius: 4px;
+  --radius-l: 6px;
+  --theme-1: #0072f5;
+  --theme-2: #0072f5;
+  --accent: #0072f5;
+  --accent-hover: #1a82ff;
+  --accent-pressed: #0059c4;
+  --txt1: #0a0a0a;
+  --txt2: rgba(0, 0, 0, 0.62);
+  --txt3: rgba(0, 0, 0, 0.45);
+  --fill-subtle: rgba(0, 0, 0, 0.05);
+  --fill-press: rgba(0, 0, 0, 0.1);
+  --stroke-ctl: rgba(0, 0, 0, 0.24);
+  --stroke-card: rgba(0, 0, 0, 0.2);
+  --card-solid: #ffffff;
+  --cell-solid: #ffffff;
+  --cell-frost: rgba(255, 255, 255, 0.97);
+  --r-ctl: 4px;
+  --r-panel: 4px;
+}
+
+/* —— Dark 令牌 —— */
+:root[data-style="obsidian"].dark {
+  --text: #f7f7f7;
+  --text2: #a8a8a8;
+  --dicon-icon: #f7f7f7;
+  --dicon-fg: #f7f7f7;
+  --dicon-shadow: 0 1px 2px #000000a6, 0 0 3px #00000073;
+  --bg50: rgba(10, 10, 10, 0.9);
+  --bg70: rgba(8, 8, 8, 0.94);
+  --unfoc: #0a0a0a;
+  --card: rgba(13, 13, 13, 0.94);
+  --surface: #0a0a0a;
+  --ctx: rgba(14, 14, 14, 0.96);
+  --contextmeu: rgba(14, 14, 14, 0.96);
+  --hover: rgba(255, 255, 255, 0.07);
+  --hover-b: rgba(255, 255, 255, 0.12);
+  --hr: rgba(255, 255, 255, 0.26);
+  --shadow: rgba(0, 0, 0, 0.85);
+  --s3d: rgba(255, 255, 255, 0.06);
+  --theme-1: #0072f5;
+  --theme-2: #3b9dff;
+  --accent: #3b9dff;
+  --accent-hover: #57acff;
+  --accent-pressed: #0072f5;
+  --txt1: #f7f7f7;
+  --txt2: rgba(255, 255, 255, 0.64);
+  --txt3: rgba(255, 255, 255, 0.46);
+  --fill-subtle: rgba(255, 255, 255, 0.06);
+  --fill-press: rgba(255, 255, 255, 0.12);
+  --stroke-ctl: rgba(255, 255, 255, 0.26);
+  --stroke-card: rgba(255, 255, 255, 0.2);
+  --card-solid: #0d0d0d;
+  --cell-solid: #0d0d0d;
+  --cell-frost: rgba(13, 13, 13, 0.97);
+}
+
+/* —— 材质：几乎不放玻璃（只用一点模糊压住背景，观感仍接近实底）—— */
+:root[data-style="obsidian"] .w12-win {
+  border-color: #6f6f6f66;
+  border-width: 1px;
+}
+:root[data-style="obsidian"] .w12-win.foc {
+  backdrop-filter: blur(12px) saturate(1) contrast(1);
+  -webkit-backdrop-filter: blur(12px) saturate(1) contrast(1);
+}
+:root[data-style="obsidian"].dark .w12-win {
+  border-color: #ffffff40;
+}
+:root[data-style="obsidian"].dark .w12-win.foc {
+  backdrop-filter: blur(12px) saturate(1) contrast(1);
+  -webkit-backdrop-filter: blur(12px) saturate(1) contrast(1);
+}
+
+/* —— 弹层：实底 + 硬描边（不用亚克力柔光）—— */
+:root[data-style="obsidian"] .ant-select-dropdown,
+:root[data-style="obsidian"] .ant-dropdown .ant-dropdown-menu,
+:root[data-style="obsidian"] .ant-picker-dropdown .ant-picker-panel,
+:root[data-style="obsidian"] .ant-picker-panel-container,
+:root[data-style="obsidian"] .ant-dropdown > div:not(.ant-dropdown-menu) {
+  background: #ffffff !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 1px solid rgba(0, 0, 0, 0.24);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.14) !important;
+}
+:root[data-style="obsidian"].dark .ant-select-dropdown,
+:root[data-style="obsidian"].dark .ant-dropdown .ant-dropdown-menu,
+:root[data-style="obsidian"].dark .ant-picker-dropdown .ant-picker-panel,
+:root[data-style="obsidian"].dark .ant-picker-panel-container,
+:root[data-style="obsidian"].dark .ant-dropdown > div:not(.ant-dropdown-menu) {
+  background: #0d0d0d !important;
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+/* —— 分层策略：卡片不用柔影，改用底部 2px 硬基线（工业感）—— */
+:root[data-style="obsidian"] .wp-card {
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.06);
+}
+:root[data-style="obsidian"].dark .wp-card {
+  box-shadow: 0 2px 0 rgba(255, 255, 255, 0.08);
+}

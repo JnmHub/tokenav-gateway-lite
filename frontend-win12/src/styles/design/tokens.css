@@ -1,0 +1,16 @@
+:root {
+  --w12-r-window: 12px; --w12-r-control: 8px; --w12-r-status: 4px;
+  --w12-fg: #1c1c1c; --w12-muted: #5c5c5c;
+  --w12-control: rgba(255,255,255,.62); --w12-border: rgba(0,0,0,.12);
+  --w12-hover: rgba(0,0,0,.04); --w12-table: #f9f9fa;
+  --w12-table-hover: #efeff1; --w12-table-selected: #e6edf4;
+  --w12-danger: #b3261e; --w12-success: #1d7a3e;
+}
+:root.dark {
+  --w12-fg: #eee; --w12-muted: #b5b5b5;
+  --w12-control: rgba(255,255,255,.06); --w12-border: rgba(255,255,255,.14);
+  --w12-hover: rgba(255,255,255,.06); --w12-table: #202020;
+  --w12-table-hover: #2b2b2b; --w12-table-selected: #273442;
+  --w12-danger: #f19994; --w12-success: #7fd89a;
+}
+.w12-design { font-family: 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif; color: var(--w12-fg); --r-ctl: 8px; --r-panel: 8px; --cell-frost: var(--w12-table); }

@@ -1,0 +1,13 @@
+/* 基础与旧应用按职责保留；外壳和样板由独立设计系统承载。 */
+@import "./base/legacy-tokens.css";
+@import "./legacy/controls.css";
+@import "./legacy/dialogs.css";
+@import "./base/reset.css";
+@import "./base/boot.css";
+@import "./base/login.css";
+@import "./legacy/settings-layout.css";
+@import "./legacy/edge.css";
+@import "./legacy/demo-apps.css";
+@import "./legacy/terminal.css";
+@import "./legacy/polish.css";
+@import "./legacy/responsive.css";

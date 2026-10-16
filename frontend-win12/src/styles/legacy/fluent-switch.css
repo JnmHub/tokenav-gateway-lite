@@ -1,0 +1,44 @@
+/* ---------- 开关：原版 .checkbox 形态（灰半透轨道/渐变选中/无阴影） ---------- */
+.ant-switch {
+  border: none;
+}
+
+/* 把手纯白且无投影（原版 ::before 无 box-shadow，antd 默认阴影显脏）。
+ * antd-vue 4.x 的 Switch token（handleSize:14）不生效，实际渲染 18px 且贴底
+ * （top:2px，轨道 20px 底部 0 间隙）→ 视觉偏下；强制 16px 垂直居中（原版尺寸）。 */
+.ant-switch .ant-switch-handle {
+  box-shadow: none !important;
+  width: 16px !important;
+  height: 16px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
+.ant-switch.ant-switch-checked .ant-switch-handle {
+  inset-inline-start: calc(100% - 18px) !important;
+}
+.ant-switch .ant-switch-handle::before {
+  background: #fff;
+  box-shadow: none;
+}
+
+.ant-switch:not(.ant-switch-checked) {
+  background: #9f9f9f40;
+}
+
+.ant-switch:not(.ant-switch-checked):hover {
+  background: #8f8f8f5a;
+}
+
+.ant-switch.ant-switch-checked,
+.ant-switch.ant-switch-checked:not(:disabled):hover,
+.ant-switch.ant-switch-checked:not(:disabled):focus-visible {
+  /* 原版 .checkbox.checked：theme-1→theme-2 渐变填充。
+   * 必须 !important：antd CSS-in-JS 的 checked(:hover) 纯蓝规则
+   * 动态注入在全局样式之后，同级 specificity 会赢。 */
+  background: linear-gradient(90deg, var(--theme-1), var(--theme-2)) !important;
+}
+
+.ant-switch.ant-switch-checked:not(:disabled):hover {
+  filter: brightness(1.06);
+}
+

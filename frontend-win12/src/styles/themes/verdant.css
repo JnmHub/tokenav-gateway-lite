@@ -1,0 +1,129 @@
+/* ============================================================
+ * 案 C · 翠语义（data-style="verdant"）
+ * ------------------------------------------------------------
+ * 气质：tokenav 绿语义 —— 薄荷青绿画布、白卡片 + 绿描边、投影带绿调（像一层薄雾）、
+ *       中等圆角、玻璃中强、状态色与强调色同源（强调＝成功色）。
+ * 与其它四案的区分轴（浅色下尤其明显）：
+ *   画布＝薄荷绿有彩底 / 卡片＝白 + 绿描边 + 绿调投影 / 圆角＝8px / 强调色＝绿
+ * ============================================================ */
+
+/* —— Light 令牌 —— */
+:root[data-style="verdant"] {
+  --text: #16241c;
+  --text2: #55675c;
+  --dicon-icon: #1f4a30;
+  --dicon-fg: #16241c;
+  --dicon-shadow: 0 1px 2px #ffffffe0, 0 0 3px #ffffffb0;
+  --bg50: rgba(244, 250, 246, 0.84);
+  --bg70: rgba(245, 250, 247, 0.9);
+  --unfoc: #e8f3ec;
+  --card: rgba(255, 255, 255, 0.72);
+  --surface: #fbfffc;
+  --ctx: rgba(244, 250, 246, 0.94);
+  --contextmeu: rgba(244, 250, 246, 0.94);
+  --hover: rgba(26, 127, 55, 0.06);
+  --hover-b: rgba(26, 127, 55, 0.1);
+  --hr: rgba(26, 127, 55, 0.14);
+  --shadow: rgba(18, 74, 42, 0.18);
+  --s3d: rgba(18, 74, 42, 0.08);
+  --radius: 12px;
+  --radius-l: 14px;
+  --theme-1: #1a7f37;
+  --theme-2: #34a853;
+  --accent: #1a7f37;
+  --accent-hover: #21913f;
+  --accent-pressed: #146c2e;
+  --txt1: rgba(12, 34, 22, 0.9);
+  --txt2: rgba(12, 34, 22, 0.6);
+  --txt3: rgba(12, 34, 22, 0.45);
+  --fill-subtle: rgba(26, 127, 55, 0.05);
+  --fill-press: rgba(26, 127, 55, 0.095);
+  --stroke-ctl: rgba(26, 127, 55, 0.2);
+  --stroke-card: rgba(26, 127, 55, 0.15);
+  --card-solid: #fbfffc;
+  --cell-solid: #f1f9f4;
+  --cell-frost: rgba(244, 250, 246, 0.92);
+  --r-ctl: 8px;
+  --r-panel: 8px;
+}
+
+/* —— Dark 令牌 —— */
+:root[data-style="verdant"].dark {
+  --text: #e6f2ea;
+  --text2: #b3c9bd;
+  --dicon-icon: #dcefe2;
+  --dicon-fg: #e6f2ea;
+  --dicon-shadow: 0 1px 2px #000000a6, 0 0 3px #00000073;
+  --bg50: rgba(14, 22, 18, 0.8);
+  --bg70: rgba(16, 26, 21, 0.9);
+  --unfoc: #101a15;
+  --card: rgba(22, 36, 29, 0.72);
+  --surface: #101a15;
+  --ctx: rgba(20, 32, 26, 0.94);
+  --contextmeu: rgba(20, 32, 26, 0.94);
+  --hover: rgba(63, 185, 80, 0.08);
+  --hover-b: rgba(63, 185, 80, 0.14);
+  --hr: rgba(63, 185, 80, 0.16);
+  --shadow: rgba(0, 0, 0, 0.55);
+  --s3d: rgba(0, 0, 0, 0.4);
+  --theme-1: #2f9e44;
+  --theme-2: #3fb950;
+  --accent: #3fb950;
+  --accent-hover: #4ec95f;
+  --accent-pressed: #2f9e44;
+  --txt1: rgba(232, 246, 236, 0.95);
+  --txt2: rgba(232, 246, 236, 0.62);
+  --txt3: rgba(232, 246, 236, 0.45);
+  --fill-subtle: rgba(63, 185, 80, 0.07);
+  --fill-press: rgba(63, 185, 80, 0.12);
+  --stroke-ctl: rgba(63, 185, 80, 0.22);
+  --stroke-card: rgba(63, 185, 80, 0.16);
+  --card-solid: #16241d;
+  --cell-solid: #131f19;
+  --cell-frost: rgba(19, 31, 25, 0.92);
+}
+
+/* —— 材质：中等强度玻璃 + 绿调描边窗口 —— */
+:root[data-style="verdant"] .w12-win {
+  border-color: #1a7f373d;
+}
+:root[data-style="verdant"] .w12-win.foc {
+  backdrop-filter: blur(20px) saturate(1.25) contrast(0.94);
+  -webkit-backdrop-filter: blur(20px) saturate(1.25) contrast(0.94);
+}
+:root[data-style="verdant"].dark .w12-win {
+  border-color: #3fb95033;
+}
+:root[data-style="verdant"].dark .w12-win.foc {
+  backdrop-filter: blur(26px) saturate(1.35) contrast(0.92);
+  -webkit-backdrop-filter: blur(26px) saturate(1.35) contrast(0.92);
+}
+
+/* —— 弹层：Acrylic + 绿描边 —— */
+:root[data-style="verdant"] .ant-select-dropdown,
+:root[data-style="verdant"] .ant-dropdown .ant-dropdown-menu,
+:root[data-style="verdant"] .ant-picker-dropdown .ant-picker-panel,
+:root[data-style="verdant"] .ant-picker-panel-container,
+:root[data-style="verdant"] .ant-dropdown > div:not(.ant-dropdown-menu) {
+  background: rgba(250, 253, 251, 0.92) !important;
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  border: 1px solid rgba(26, 127, 55, 0.16);
+  box-shadow: 0 8px 22px rgba(18, 74, 42, 0.16) !important;
+}
+:root[data-style="verdant"].dark .ant-select-dropdown,
+:root[data-style="verdant"].dark .ant-dropdown .ant-dropdown-menu,
+:root[data-style="verdant"].dark .ant-picker-dropdown .ant-picker-panel,
+:root[data-style="verdant"].dark .ant-picker-panel-container,
+:root[data-style="verdant"].dark .ant-dropdown > div:not(.ant-dropdown-menu) {
+  background: rgba(22, 36, 29, 0.95) !important;
+  border-color: rgba(63, 185, 80, 0.2);
+}
+
+/* —— 分层策略：卡片带绿调柔影（区别于 A 的无影 / E 的深影）—— */
+:root[data-style="verdant"] .wp-card {
+  box-shadow: 0 2px 10px rgba(18, 74, 42, 0.07);
+}
+:root[data-style="verdant"].dark .wp-card {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+}

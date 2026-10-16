@@ -1,0 +1,108 @@
+/**
+ * Admin API barrel export
+ * Centralized exports for all admin API modules
+ */
+
+import dashboardAPI from './dashboard'
+import usersAPI from './users'
+import groupsAPI from './groups'
+import accountsAPI from './accounts'
+import proxiesAPI from './proxies'
+import settingsAPI from './settings'
+import systemAPI from './system'
+import usageAPI from './usage'
+import geminiAPI from './gemini'
+import antigravityAPI from './antigravity'
+import grokAPI from './grok'
+import userAttributesAPI from './userAttributes'
+import opsAPI from './ops'
+import errorPassthroughAPI from './errorPassthrough'
+import dataManagementAPI from './dataManagement'
+import apiKeysAPI from './apiKeys'
+import scheduledTestsAPI from './scheduledTests'
+import tlsFingerprintProfileAPI from './tlsFingerprintProfile'
+import channelsAPI from './channels'
+import channelMonitorAPI from './channelMonitor'
+import channelMonitorTemplateAPI from './channelMonitorTemplate'
+import riskControlAPI from './riskControl'
+import modelPricesAPI from './modelPrices'
+import gatewayLiteLocalKeysAPI from './gatewayLiteLocalKeys'
+import auditAPI from './audit'
+import cnProvidersAPI from './cnProviders'
+
+/**
+ * Unified admin API object for convenient access
+ */
+export const adminAPI = {
+  dashboard: dashboardAPI,
+  users: usersAPI,
+  groups: groupsAPI,
+  accounts: accountsAPI,
+  proxies: proxiesAPI,
+  settings: settingsAPI,
+  system: systemAPI,
+  usage: usageAPI,
+  gemini: geminiAPI,
+  antigravity: antigravityAPI,
+  grok: grokAPI,
+  userAttributes: userAttributesAPI,
+  ops: opsAPI,
+  errorPassthrough: errorPassthroughAPI,
+  dataManagement: dataManagementAPI,
+  apiKeys: apiKeysAPI,
+  scheduledTests: scheduledTestsAPI,
+  tlsFingerprintProfiles: tlsFingerprintProfileAPI,
+  channels: channelsAPI,
+  channelMonitor: channelMonitorAPI,
+  channelMonitorTemplate: channelMonitorTemplateAPI,
+  riskControl: riskControlAPI,
+  modelPrices: modelPricesAPI,
+  gatewayLiteLocalKeys: gatewayLiteLocalKeysAPI,
+  audit: auditAPI,
+  cnProviders: cnProvidersAPI
+}
+
+export {
+  dashboardAPI,
+  usersAPI,
+  groupsAPI,
+  accountsAPI,
+  proxiesAPI,
+  settingsAPI,
+  systemAPI,
+  usageAPI,
+  geminiAPI,
+  antigravityAPI,
+  grokAPI,
+  userAttributesAPI,
+  opsAPI,
+  errorPassthroughAPI,
+  dataManagementAPI,
+  apiKeysAPI,
+  scheduledTestsAPI,
+  tlsFingerprintProfileAPI,
+  channelsAPI,
+  channelMonitorAPI,
+  channelMonitorTemplateAPI,
+  riskControlAPI,
+  modelPricesAPI,
+  gatewayLiteLocalKeysAPI,
+  auditAPI,
+  cnProvidersAPI
+}
+
+export default adminAPI
+
+// Re-export types used by components
+export type { BalanceHistoryItem } from './users'
+export type { ErrorPassthroughRule, CreateRuleRequest, UpdateRuleRequest } from './errorPassthrough'
+export type { DataManagementConfig } from './dataManagement'
+export type { TLSFingerprintProfile, CreateProfileRequest, UpdateProfileRequest } from './tlsFingerprintProfile'
+export type { ContentModerationConfig, ContentModerationLog, KeywordCatalogStatus, ModerationMode } from './riskControl'
+export type { ModelPrice, ModelPriceSyncStatus, UpsertModelPriceRequest } from './modelPrices'
+export type {
+  GatewayLiteLocalKey,
+  CreateGatewayLiteLocalKeyRequest,
+  UpdateGatewayLiteLocalKeyRequest,
+} from './gatewayLiteLocalKeys'
+export type { OperationAuditLog, OperationAuditListParams, OperationAuditListResponse } from './audit'

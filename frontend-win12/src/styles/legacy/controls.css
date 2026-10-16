@@ -1,0 +1,140 @@
+/* ==================== Win12 现代应用规范层（2026-09 定稿） ====================
+ * 圆角：窗口 12 / 按钮输入下拉 8 / 标签 4；控件高统一 32、主按钮 36；
+ * 低饱和半透明底色优先；弹层毛玻璃；表格无竖线；行 hover 浅灰。 */
+
+/* 主按钮：低饱和主题蓝半透明底 + 同色描边（禁高饱和实心与厚重投影） */
+.ant-btn-primary {
+  background: color-mix(in srgb, var(--theme-2) 88%, transparent);
+  border-color: color-mix(in srgb, var(--theme-2) 92%, transparent);
+  box-shadow: none;
+}
+
+.ant-btn-primary:not(:disabled):hover {
+  background: color-mix(in srgb, var(--theme-2) 96%, transparent);
+}
+
+/* 危险主按钮：降饱和红 */
+.ant-btn-primary.ant-btn-dangerous {
+  background: rgba(212, 81, 81, 0.88);
+  border-color: rgba(212, 81, 81, 0.9);
+}
+
+/* 次要/描边按钮 hover：浅灰半透明填充（不换色） */
+.ant-btn-default:not(:disabled):hover {
+  background: rgba(0, 0, 0, 0.045);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+:root.dark .ant-btn-default:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+/* 深色下次要按钮的静态底色。
+ * 缺陷：antd 的 defaultBg 在深色上下文里仍可能落到近白（实测计算值
+ * rgb(255,255,255)），而文字色是 --txt1（白），于是「取消」这类次要按钮
+ * 变成白底白字、完全不可读。此处显式给一个浅白半透明底，与 hover 态衔接。 */
+:root.dark .ant-btn-default:not(:disabled):not(.ant-btn-dangerous) {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: var(--txt1, rgba(255, 255, 255, 0.95));
+}
+:root.dark .ant-btn-default:not(:disabled):not(.ant-btn-dangerous):hover {
+  background: rgba(255, 255, 255, 0.11);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* 输入框/下拉框：半透明毛玻璃底，聚焦主题蓝描边、无发光
+ * 注意：带前缀图标的输入框是 wrapper + 内层 input 双层结构，
+ * 内层必须透明，否则实色白块叠在半透明 wrapper 上出现白色方块 */
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-select:not(.ant-select-customize-input) .ant-select-selector,
+.ant-input-number {
+  background: rgba(255, 255, 255, 0.62) !important;
+}
+
+.ant-input-affix-wrapper .ant-input,
+.ant-input-number-input {
+  background: transparent !important;
+}
+
+:root.dark .ant-input,
+:root.dark .ant-input-affix-wrapper,
+:root.dark .ant-select:not(.ant-select-customize-input) .ant-select-selector,
+:root.dark .ant-input-number {
+  background: rgba(48, 48, 48, 0.6) !important;
+}
+
+.ant-input-focused,
+.ant-input-affix-wrapper-focused,
+.ant-select-focused .ant-select-selector {
+  border-color: var(--theme-2) !important;
+  box-shadow: none !important;
+}
+
+/* 下拉/浮层弹层：毛玻璃半透明 */
+.ant-select-dropdown,
+.ant-dropdown .ant-dropdown-menu,
+.ant-picker-dropdown .ant-picker-panel {
+  background: rgba(250, 250, 250, 0.88) !important;
+  backdrop-filter: blur(24px) saturate(1.8);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+}
+
+:root.dark .ant-select-dropdown,
+:root.dark .ant-dropdown .ant-dropdown-menu,
+:root.dark .ant-picker-dropdown .ant-picker-panel {
+  background: rgba(38, 38, 38, 0.9) !important;
+}
+
+/* 表格：仅水平极浅分割线，删除全部竖向列分隔线 */
+.ant-table-tbody>tr>td,
+.ant-table-thead>tr>th {
+  border-inline-end: none !important;
+}
+
+/* 状态标签：高 20px、圆角 4px、低饱和半透明底（禁高饱和实色块） */
+.ant-tag {
+  height: 20px;
+  line-height: 18px;
+  padding: 0 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-inline-end: 0;
+}
+
+.ant-tag-green {
+  background: rgba(56, 158, 74, 0.14) !important;
+  color: #1d7a3e !important;
+  border-color: transparent !important;
+}
+
+.ant-tag-red {
+  background: rgba(209, 52, 56, 0.12) !important;
+  color: #b3261e !important;
+  border-color: transparent !important;
+}
+
+.ant-tag-blue {
+  background: rgba(59, 145, 216, 0.14) !important;
+  color: #1f5e96 !important;
+  border-color: transparent !important;
+}
+
+:root.dark .ant-tag-green { color: #7fd89a !important; }
+:root.dark .ant-tag-red { color: #f19994 !important; }
+:root.dark .ant-tag-blue { color: #8ec6f0 !important; }
+
+.ant-tag-default,
+.ant-tag:not([class*='-green']):not([class*='-red']):not([class*='-blue']) {
+  background: rgba(0, 0, 0, 0.05) !important;
+  color: var(--text2) !important;
+  border-color: transparent !important;
+}
+
+:root.dark .ant-tag-default,
+:root.dark .ant-tag:not([class*='-green']):not([class*='-red']):not([class*='-blue']) {
+  background: rgba(255, 255, 255, 0.09) !important;
+}
+

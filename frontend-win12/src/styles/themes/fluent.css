@@ -1,0 +1,131 @@
+/* ============================================================
+ * 案 A · Fluent 原生（data-style="fluent"）
+ * ------------------------------------------------------------
+ * 气质：Windows 11 设置应用正统 —— 中性冷灰画布、纯白卡片靠 1px 描边分层、
+ *       几乎不用投影、标准 Fluent 蓝、标准 8px 面板圆角、强玻璃。
+ * 与其它四案的区分轴（浅色下尤其明显）：
+ *   画布＝无色相冷灰 / 卡片＝纯白实底 + 淡描边 / 投影≈无 / 圆角＝8px / 玻璃＝最强
+ * ============================================================ */
+
+/* —— Light 令牌 —— */
+:root[data-style="fluent"] {
+  /* 外壳层（桌面/窗口/任务栏/图标） */
+  --text: #1a1a1a;
+  --text2: #5d5d5d;
+  --dicon-icon: #23262b;
+  --dicon-fg: #1a1a1a;
+  --dicon-shadow: 0 1px 2px #ffffffd9, 0 0 3px #ffffffa6;
+  --bg50: rgba(249, 249, 249, 0.78);
+  --bg70: rgba(250, 250, 250, 0.86);
+  --unfoc: #f2f2f2;
+  --card: rgba(255, 255, 255, 0.72);
+  --surface: #ffffff;
+  --ctx: rgba(252, 252, 252, 0.92);
+  --contextmeu: rgba(252, 252, 252, 0.92);
+  --hover: rgba(0, 0, 0, 0.04);
+  --hover-b: rgba(0, 0, 0, 0.07);
+  --hr: rgba(0, 0, 0, 0.09);
+  --shadow: rgba(0, 0, 0, 0.14);
+  --s3d: rgba(0, 0, 0, 0.06);
+  --radius: 8px;
+  --radius-l: 12px;
+  --theme-1: #0067c0;
+  --theme-2: #2b88d8;
+  /* 应用层（Fluent 2 覆盖层） */
+  --accent: #0067c0;
+  --accent-hover: #1975c5;
+  --accent-pressed: #005a9e;
+  --txt1: rgba(0, 0, 0, 0.89);
+  --txt2: rgba(0, 0, 0, 0.6);
+  --txt3: rgba(0, 0, 0, 0.44);
+  --fill-subtle: rgba(0, 0, 0, 0.037);
+  --fill-press: rgba(0, 0, 0, 0.06);
+  --stroke-ctl: rgba(0, 0, 0, 0.11);
+  --stroke-card: rgba(0, 0, 0, 0.07);
+  --card-solid: #ffffff;
+  --cell-solid: #ffffff;
+  --cell-frost: rgba(255, 255, 255, 0.92);
+  --r-ctl: 4px;
+  --r-panel: 8px;
+}
+
+/* —— Dark 令牌 —— */
+:root[data-style="fluent"].dark {
+  --text: #f3f3f3;
+  --text2: #c8c8c8;
+  --dicon-icon: #eef1f6;
+  --dicon-fg: #f3f3f3;
+  --dicon-shadow: 0 1px 2px #000000a6, 0 0 3px #00000073;
+  --bg50: rgba(32, 32, 32, 0.72);
+  --bg70: rgba(28, 28, 28, 0.86);
+  --unfoc: #1c1c1c;
+  --card: rgba(43, 43, 43, 0.72);
+  --surface: #202020;
+  --ctx: rgba(44, 44, 44, 0.94);
+  --contextmeu: rgba(44, 44, 44, 0.94);
+  --hover: rgba(255, 255, 255, 0.05);
+  --hover-b: rgba(255, 255, 255, 0.09);
+  --hr: rgba(255, 255, 255, 0.1);
+  --shadow: rgba(0, 0, 0, 0.5);
+  --s3d: rgba(0, 0, 0, 0.4);
+  --theme-1: #0f6cbd;
+  --theme-2: #3aa0ea;
+  --accent: #3aa0ea;
+  --accent-hover: #56b0f0;
+  --accent-pressed: #0078d4;
+  --txt1: rgba(255, 255, 255, 0.95);
+  --txt2: rgba(255, 255, 255, 0.62);
+  --txt3: rgba(255, 255, 255, 0.45);
+  --fill-subtle: rgba(255, 255, 255, 0.045);
+  --fill-press: rgba(255, 255, 255, 0.08);
+  --stroke-ctl: rgba(255, 255, 255, 0.12);
+  --stroke-card: rgba(255, 255, 255, 0.07);
+  --card-solid: #2b2b2b;
+  --cell-solid: #2b2b2b;
+  --cell-frost: rgba(43, 43, 43, 0.9);
+}
+
+/* —— 材质：窗口＝标准 Acrylic（本套标志性特征，全案最强玻璃）—— */
+:root[data-style="fluent"] .w12-win {
+  border-color: #6f6f6f33;
+}
+:root[data-style="fluent"] .w12-win.foc {
+  backdrop-filter: blur(30px) saturate(1.6) contrast(0.92);
+  -webkit-backdrop-filter: blur(30px) saturate(1.6) contrast(0.92);
+}
+:root[data-style="fluent"].dark .w12-win {
+  border-color: #ffffff1f;
+}
+:root[data-style="fluent"].dark .w12-win.foc {
+  backdrop-filter: blur(24px) saturate(1.3) contrast(0.9);
+  -webkit-backdrop-filter: blur(24px) saturate(1.3) contrast(0.9);
+}
+
+/* —— 弹层：Acrylic 高实度 + 8px 面板圆角 —— */
+:root[data-style="fluent"] .ant-select-dropdown,
+:root[data-style="fluent"] .ant-dropdown .ant-dropdown-menu,
+:root[data-style="fluent"] .ant-picker-dropdown .ant-picker-panel,
+:root[data-style="fluent"] .ant-picker-panel-container,
+:root[data-style="fluent"] .ant-dropdown > div:not(.ant-dropdown-menu) {
+  background: rgba(252, 252, 252, 0.9) !important;
+  backdrop-filter: blur(30px) saturate(1.25);
+  -webkit-backdrop-filter: blur(30px) saturate(1.25);
+  border: 1px solid rgba(0, 0, 0, 0.07);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+}
+:root[data-style="fluent"].dark .ant-select-dropdown,
+:root[data-style="fluent"].dark .ant-dropdown .ant-dropdown-menu,
+:root[data-style="fluent"].dark .ant-picker-dropdown .ant-picker-panel,
+:root[data-style="fluent"].dark .ant-picker-panel-container,
+:root[data-style="fluent"].dark .ant-dropdown > div:not(.ant-dropdown-menu) {
+  background: rgba(40, 40, 40, 0.94) !important;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* —— 分层策略：卡片靠描边而不是投影浮起（Win11 正统做法）—— */
+:root[data-style="fluent"] .wp-card {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+:root[data-style="fluent"].dark .wp-card {
+  box-shadow: none;
+}

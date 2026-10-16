@@ -1,0 +1,13 @@
+:root .w12-window-layer .w12-dialog .ant-modal-content { display: flex; flex-direction: column; max-height: var(--w12-dialog-height, calc(100dvh - 128px)); padding: 16px; border-radius: 8px; background: var(--w12-popup); box-shadow: none; }
+:root .w12-window-layer .w12-dialog .ant-modal { height: auto; padding-bottom: 0; }
+:root .w12-window-layer .w12-dialog .ant-modal-body { flex: 1 1 auto; min-height: 0; overflow: auto; container: w12-dialog / inline-size; }
+:root .w12-window-layer .w12-dialog .ant-modal-header { background: transparent; margin-bottom: 16px; }
+:root .w12-window-layer .w12-dialog .ant-modal-title { font-size: 20px; font-weight: 600; color: var(--w12-fg); }
+:root .w12-window-layer .w12-dialog .ant-modal-footer { flex: none; margin-top: 16px; display: flex; justify-content: flex-end; gap: 8px; }
+:root .w12-window-layer .w12-dialog .ant-modal-footer > .ant-btn + .ant-btn { margin-inline-start: 0; }
+:root .w12-window-layer .w12-dialog .ant-modal-close { color: var(--w12-muted); top: 12px; right: 12px; }
+:root .w12-window-layer .w12-dialog .ant-modal-content .card { box-shadow: none; }
+@media (max-width: 767px) {
+  :root .w12-window-layer .w12-dialog .ant-modal { height: auto; margin-top: 0; }
+  :root .w12-window-layer .w12-dialog .ant-modal-content { max-height: var(--w12-dialog-height, calc(100dvh - 112px)); padding: 12px; }
+}

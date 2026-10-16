@@ -1,0 +1,79 @@
+/* ============================================================
+ * Win12 React 管理控制台 —— 全局样式
+ * 设计语言参考 win12-online/win12（desktop.css）的设计令牌
+ * ============================================================ */
+
+:root {
+  --text: #1c1c1c;
+  --text2: #5c5c5c;
+  --bg50: #ffffffb0;
+  --bg70: #ffffffc0;
+  --shadow: #22222230;
+  --card: #efefeff0;
+  --hover: #ffffff65;
+  --hover-b: #1111110f;
+  --unfoc: #eaeaea;
+  --ctx: #f7f7f7bb;
+  /* 描边：由 #ccc 降为轻灰。原值在浅底上形成「每个控件一圈重边」的噪音，
+   * 是「页面看起来很累」的主要来源之一；层次改由底色/留白承担。 */
+  --hr: rgba(0, 0, 0, 0.1);
+  --contextmeu: #f7f7f7bb;
+  --s3d: #99999947;
+  --surface: #ffffffea;
+  --theme-1: #ad6eca;
+  --theme-2: #3b91d8;
+  --radius: 12px;
+  --radius-l: 20px;
+  --ease-win: cubic-bezier(0.9, 0, 0.1, 1);
+  --ease-open: cubic-bezier(0.1, 0.9, 0.2, 1);
+  --ease-menu: cubic-bezier(0.05, 0.96, 0.11, 1);
+
+  /* ---------- 分层容器令牌（Layer tokens） ----------
+   * 问题：此前 --card 一个值同时充当「页面卡片 / 弹窗内行 / 分段控件底 /
+   * 标签底 / 输入框底」五种语义。同一灰底层层相叠，视觉上无法区分层级。
+   *
+   * 现在按「容器深度」拆开，语义固定：
+   *   --surface-card  页面级卡片：浮在内容层之上，用白底 + 极弱投影抬起
+   *   --surface-sunken 弹窗内行/嵌入块：比容器底更深一档，靠「下沉」表达分组
+   *   --surface-inset  控件底（分段控件轨道/输入框/标签）：再深一档
+   *   --stroke-hairline 分隔用的极弱描边（不用于外形勾勒）
+   * 组件继续优先引用旧令牌，弹窗作用域内由下方重映射，避免逐个改组件。 */
+  --surface-card: #ffffff;
+  --surface-sunken: rgba(0, 0, 0, 0.022);
+  --surface-inset: rgba(0, 0, 0, 0.045);
+  --stroke-hairline: rgba(0, 0, 0, 0.06);
+  --elev-card: 0 1px 2px rgba(0, 0, 0, 0.04), 0 1px 1px rgba(0, 0, 0, 0.03);
+  --elev-card-hover: 0 2px 6px rgba(0, 0, 0, 0.07), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+:root.dark {
+  --text: #eee;
+  --text2: #aaa;
+  --bg50: #111111a0;
+  --bg70: #1a1a1ac5;
+  --shadow: #000000a0;
+  /* 卡片底色：Win11 深色卡片 #2b2b2b 质感、近实底（旧 25% 透明度太透，
+   * 浮在壁纸上显脏，用户反馈「卡片透明度太丑」） */
+  --card: #3a3a3af2;
+  --hover: #aaaaaa30;
+  --hover-b: #eeeeee0f;
+  --unfoc: #202020;
+  --ctx: #292929bb;
+  --hr: rgba(255, 255, 255, 0.12);
+  --contextmeu: #292929bb;
+  --s3d: #11111150;
+  --surface: #1d1d1de8;
+
+  /* 深色下「下沉」不可用（越深越糊），改为「提亮一档」表达分组 */
+  --surface-card: #2b2b2b;
+  --surface-sunken: rgba(255, 255, 255, 0.035);
+  --surface-inset: rgba(255, 255, 255, 0.07);
+  --stroke-hairline: rgba(255, 255, 255, 0.055);
+  --elev-card: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --elev-card-hover: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+* {
+  box-sizing: border-box;
+}
+

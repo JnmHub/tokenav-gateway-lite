@@ -1,0 +1,254 @@
+# Tokenav gateway-lite（轻量网关）脱敏配置示例。
+#
+# 使用前请复制到受限目录并替换所有 REPLACE_WITH_* 值。不要把真实配置、
+# 密码、Token（令牌）或管理员密钥提交到 Git（版本控制）或放进源码包。
+
+run_mode: gateway-lite
+timezone: Asia/Shanghai
+
+server:
+  host: 0.0.0.0
+  port: 8080
+  mode: release
+  # HTTP/1 请求头及 HTTP/2 header-list 上限；兼容默认 64 KiB。
+  max_header_bytes: 65536
+  # 只填写真实反向代理的 IP/CIDR；留空时不信任 X-Forwarded-For 等转发头。
+  trusted_proxies: []
+
+admin:
+  email: admin@example.invalid
+  password: REPLACE_WITH_A_STRONG_ADMIN_PASSWORD
+
+database:
+  host: 127.0.0.1
+  port: 5432
+  user: gateway_lite
+  password: REPLACE_WITH_DATABASE_PASSWORD
+  dbname: gateway_lite
+  sslmode: disable
+  # 高并发节点可在压测后显式调整；未填写时由程序按运行环境使用安全默认值。
+  # max_open_conns: 90
+  # max_idle_conns: 30
+  # conn_max_lifetime_minutes: 30
+  # conn_max_idle_time_minutes: 5
+
+redis:
+  host: 127.0.0.1
+  port: 6379
+  username: ""
+  password: REPLACE_WITH_REDIS_PASSWORD
+  db: 0
+  enable_tls: false
+  # 不要只为追求数字盲目放大连接池；当前生产基线仍以默认值为准。
+  # pool_size: 256
+  # min_idle_conns: 20
+
+jwt:
+  secret: REPLACE_WITH_AT_LEAST_32_RANDOM_CHARACTERS
+  expire_hour: 24
+
+default:
+  api_key_prefix: sk-
+  user_balance: 0
+  user_concurrency: 5
+  rate_multiplier: 1
+
+rate_limit:
+  requests_per_minute: 60
+  burst_size: 10
+
+billing:
+  # 关键扣减和非关键缓存预热使用独立有界队列，避免缓存 miss（未命中）
+  # 洪峰挤占余额、订阅用量和 API Key 限额更新。
+  cache_write:
+    # low / standard / high；通常只改这一项即可。
+    preset: standard
+    # 以下是可选的单项覆盖。只使用预设时保持注释，避免覆盖预设值。
+    # critical_worker_count: 8
+    # critical_buffer_size: 2048
+    # best_effort_worker_count: 2
+    # best_effort_buffer_size: 512
+    # timeout_milliseconds: 2000
+
+pricing:
+  # 官方基础价格可独立更新；本地管理员覆盖价始终拥有最高优先级。
+  manifest_url: https://raw.githubusercontent.com/JnmHub/tokenav-catalog/master/catalog/pricing/v1/manifest.json
+  remote_url: https://raw.githubusercontent.com/JnmHub/tokenav-catalog/master/catalog/pricing/v1/model_prices_and_context_window.json
+  hash_url: https://raw.githubusercontent.com/JnmHub/tokenav-catalog/master/catalog/pricing/v1/model_prices_and_context_window.json.sha256
+  data_dir: ./data
+  fallback_file: ./resources/model-pricing/model_prices_and_context_window.json
+  update_interval_hours: 24
+  hash_check_interval_minutes: 10
+
+catalog:
+  keyword_catalog:
+    # 官方关键词目录独立更新；远程不可用时继续使用磁盘 last-good 或内置规则。
+    enabled: true
+    manifest_url: https://raw.githubusercontent.com/JnmHub/tokenav-catalog/master/catalog/moderation/v1/manifest.json
+    data_dir: ./data/keyword-catalog
+    refresh_interval_minutes: 10
+    request_timeout_seconds: 15
+    max_manifest_bytes: 131072
+    max_catalog_bytes: 4194304
+    # 仅供本地测试；生产环境应保持 false。
+    allow_insecure_http: false
+
+gateway_lite:
+  gateway_code: gateway-example-1
+  region: example-region
+  # 生图远程图片中转默认开启；关闭后将保留上游图片地址（客户可能无法访问）。
+  media_proxy_enabled: true
+  # 对外 HTTPS 基础地址，仅用于生图媒体中转返回绝对 URL；留空时返回同源相对路径。
+  # 不要填写 server.frontend_url，也不要根据 Host/X-Forwarded-Host 自动推断。
+  # 示例：https://api.example.com
+  public_url: ""
+  # 媒体地址签名有效期（秒），范围 60-86400，默认 900。
+  media_proxy_ttl_seconds: 900
+  control_plane_url: http://127.0.0.1:8088
+  control_plane_token: REPLACE_WITH_CONTROL_PLANE_TOKEN
+  admin_sync_key: REPLACE_WITH_GATEWAY_ADMIN_SYNC_KEY
+  control_plane_timeout_ms: 1000
+  config_sync_interval_seconds: 30
+  cache_invalidation_interval_seconds: 5
+  runtime_health_interval_seconds: 15
+  runtime_active_window_seconds: 300
+  redis_prefix: tokenav:gateway-lite
+  usage_queue_pending_alert_threshold: 1000
+  usage_queue_dead_alert_threshold: 1
+  # 连续非法 Key 防刷：本地快速拒绝 + Redis 多节点聚合；Redis 故障时失败开放。
+  invalid_auth_abuse_enabled: true
+  invalid_auth_abuse_threshold: 120
+  invalid_auth_abuse_window_seconds: 60
+  invalid_auth_abuse_block_seconds: 60
+  invalid_auth_abuse_capacity: 16384
+  invalid_auth_abuse_redis_timeout_ms: 25
+  # Server-Timing 默认不采样；100 = 1%，10000 = 100%。排障时也可在后台临时开启。
+  server_timing_sample_basis_points: 0
+  legacy_snapshot_scheduler_authority: false
+  # 选择性升级能力必须在计费和主站闭环验收后再开启。
+  composite_groups_enabled: false
+
+# Codex 超额（tail-burst）：账号用量贴近窗口上限或窗口/订阅即将重置时，
+# 跳过本地预防性停调，继续承接请求直到上游返回权威配额拒绝（429
+# usage_limit_reached 等，走现有限流路径冻结）。总开关默认关闭。
+codex_tail_burst:
+  enabled: false
+  # 剩余额度占比阈值（0~1），任一窗口剩余 <= 该值即进入尾部爆发，默认 0.02。
+  trigger_remaining_ratio: 0.02
+  # 窗口重置或账号订阅到期的提前触发窗口，默认 10m。
+  expiry_window: 10m
+  # 用量快照视为新鲜的最长时长；过期后不再据此放行尾部流量，默认 90s。
+  snapshot_ttl: 90s
+  # 采集器轮询 /wham/usage 的间隔，默认 45s。
+  collector_interval: 45s
+  # 采集器并发请求上限，默认 4。
+  collector_concurrency: 4
+  # 单次上游用量请求超时，默认 8s。
+  collector_timeout: 8s
+
+gateway:
+  # 紧急回滚：关闭 Codex 出站 User-Agent/originator/version 强制统一。默认 false。
+  disable_codex_identity_enforcement: false
+  # 旧配置键兼容，语义同上；新部署请使用 disable_codex_identity_enforcement。
+  disable_codex_originator_normalization: false
+  # 多模态、Gemini、图片和视频请求体总上限，默认 256 MiB。
+  max_body_size: 268435456
+  # 纯文本 JSON 端点（embeddings、alpha/search）独立上限，默认 32 MiB。
+  text_max_body_size: 33554432
+  # 上游模型目录响应读取上限，统一保护通用、Codex 和 Antigravity 模型同步，默认 8 MiB。
+  models_list_read_max_bytes: 8388608
+  # 未完成真实账号、按秒价格和异步终态核账验收时保持关闭。
+  grok_video_transforms_enabled: false
+  grok:
+    # 仅对明确标记 free 的 Grok OAuth 账号生效；首次缓存缺失会先放行并后台刷新。
+    free_quota_soft_gate_enabled: true
+    free_quota_token_limit: 500000
+    free_quota_soft_gate_percent: 95
+    free_quota_window_hours: 24
+    free_quota_stats_cache_seconds: 60
+  image_nonstream_keepalive_interval: 0
+  # Durable asynchronous image tasks are isolated from the text hot path.
+  # Keep disabled until a persistent totp.encryption_key and object storage
+  # have been configured. Clustered gateways must use s3 rather than local.
+  image_tasks:
+    enabled: false
+    worker_count: 2
+    queue_capacity: 256
+    # 每个 worker 每次唤醒最多连续处理的任务数；实际始终逐个 claim，避免慢任务导致批量 claim 过期。
+    claim_batch_size: 16
+    per_user_concurrency: 1
+    max_images_per_task: 4
+    # 仅限制派发上游前的尝试（含请求解密）；派发后不重新生图，结算/释放会独立重试到财务终态。
+    max_attempts: 3
+    execution_timeout_seconds: 600
+    # Must leave at least 3 minutes after execution for object persistence and settlement.
+    claim_ttl_seconds: 900
+    poll_interval_milliseconds: 1000
+    result_retention_days: 7
+    download_url_ttl_seconds: 900
+    # Only JSON image generations are accepted; keep encrypted database rows small.
+    max_request_bytes: 1048576
+    max_artifact_bytes: 26214400
+    max_task_artifact_bytes: 83886080
+    storage:
+      type: local # local / s3
+      local_path: ./data/image-tasks
+      s3:
+        endpoint: ""
+        region: auto
+        bucket: ""
+        prefix: image-tasks
+        access_key_id: ""
+        secret_access_key: ""
+        force_path_style: false
+  openai_first_output_timeout_seconds: 0
+  openai_first_output_high_reasoning_timeout_seconds: 0
+  openai_ws:
+    client_first_message_timeout_seconds: 30
+  # OpenAI Responses SSE 代理断流熔断。隔离是调度偏好而非硬闸：
+  # 全部候选都在被隔离代理下时会自动放行，3 秒内的并发断流只计一次。
+  openai_proxy_stream_circuit:
+    disabled: false
+    failure_threshold: 2
+    window_seconds: 60
+    ttl_seconds: 600
+
+security:
+  # 只有明确配置可信代理后，才允许 ACL（访问控制）、会话和日志采用转发来源。
+  trust_forwarded_ip_for_api_key_acl: false
+  forwarded_client_ip_headers: []
+  session_binding_mode: off
+  step_up_enabled: false
+  step_up_ttl_seconds: 300
+  audit_log_retention_days: 180
+  audit_log_cleanup_batch_size: 5000
+  audit_log_cleanup_interval_minutes: 1440
+  proxy_probe:
+    insecure_skip_verify: false
+    # 按顺序尝试的代理出口探测目标；留空时使用内置 ip-api / ipify。
+    # parser 支持：ip-api、ipify、chatgpt-trace。
+    urls: []
+    # urls:
+    #   - url: "https://chatgpt.com/cdn-cgi/trace"
+    #     parser: "chatgpt-trace"
+  url_allowlist:
+    enabled: false
+    upstream_hosts:
+      - api.openai.com
+      - api.moonshot.ai
+      - api.moonshot.cn
+    allow_private_hosts: false
+    allow_insecure_http: false
+
+token_refresh:
+  enabled: true
+  check_interval_minutes: 5
+  refresh_before_expiry_hours: 0.5
+  max_retries: 3
+  retry_backoff_seconds: 2
+  candidate_page_size: 200
+  provider_concurrency: 4
+  provider_qps: 2
+  provider_failure_threshold: 3
+  cycle_timeout_seconds: 240
+  attempt_timeout_seconds: 30

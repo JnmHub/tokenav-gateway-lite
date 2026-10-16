@@ -1,0 +1,41 @@
+/* ---------- 表格：Fluent 数据网格 ---------- */
+.ant-table {
+  background: transparent;
+  font-size: 13px;
+}
+
+.ant-table-thead > tr > th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--txt2);
+  background: transparent !important;
+  padding: 9px 12px !important;
+}
+
+.ant-table-tbody > tr > td {
+  padding: 9px 12px !important;
+}
+
+/* 表格规范：删除全部竖向列分隔线（仅保留行底部水平分割线） */
+.ant-table-tbody > tr > td,
+.ant-table-thead > tr > th {
+  border-inline-end: none !important;
+}
+
+.ant-table-tbody > tr > td {
+  border-bottom: 1px solid var(--stroke-card) !important;
+}
+
+.ant-table-tbody > tr:last-child > td {
+  border-bottom: none !important;
+}
+
+.ant-table-thead > tr > th::before {
+  display: none !important;
+}
+
+/* 表头排序图标 hover 才加深 */
+.ant-table-column-sorters {
+  justify-content: flex-start !important;
+}
+

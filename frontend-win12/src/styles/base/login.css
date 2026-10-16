@@ -1,0 +1,196 @@
+/* ==================== 锁屏 / 登录 ==================== */
+
+/* 2FA 两步验证：副标题 + 验证码输入（居中等宽数字，触屏数字键盘） */
+.w12-login-sub {
+  font-size: 13px;
+  color: var(--text2);
+  margin: -6px 0 14px;
+  text-align: center;
+  word-break: break-all;
+}
+
+.w12-totp input {
+  text-align: center;
+  letter-spacing: 8px;
+  font-size: 20px;
+  font-family: Consolas, monospace;
+}
+
+.w12-totp-back {
+  margin-top: 6px;
+  align-self: center;
+}
+
+.w12-lock {
+  position: fixed;
+  inset: 0;
+  z-index: 9900;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  transition: opacity 420ms var(--ease-open), transform 420ms var(--ease-open), filter 300ms;
+}
+
+.w12-lock.hide {
+  opacity: 0;
+  transform: scale(1.06);
+  pointer-events: none;
+}
+
+.w12-lock.login-mode::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #ffffff26;
+  backdrop-filter: blur(28px) saturate(1.6);
+  -webkit-backdrop-filter: blur(28px) saturate(1.6);
+}
+
+:root.dark .w12-lock.login-mode::before {
+  background: #00000048;
+}
+
+.w12-lock-time {
+  position: relative;
+  font-size: 84px;
+  font-weight: 600;
+  line-height: 1;
+  text-shadow: 0 2px 24px #00000080;
+  margin-bottom: 18px;
+  cursor: default;
+}
+
+.w12-lock-date {
+  position: relative;
+  font-size: 22px;
+  text-shadow: 0 2px 12px #00000080;
+  cursor: default;
+}
+
+.w12-lock-hint {
+  position: absolute;
+  bottom: 42px;
+  font-size: 14px;
+  opacity: 0.85;
+  text-shadow: 0 1px 8px #00000080;
+  animation: hint-float 2.4s ease-in-out infinite;
+}
+
+@keyframes hint-float {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translateY(-5px);
+    opacity: 0.55;
+  }
+}
+
+.w12-login-card {
+  position: relative;
+  width: 360px;
+  padding: 36px 34px 24px;
+  border-radius: 14px;
+  background: #ffffff8c;
+  backdrop-filter: blur(30px) saturate(1.8);
+  -webkit-backdrop-filter: blur(30px) saturate(1.8);
+  border: 1.5px solid #ffffff90;
+  outline: 1px solid #99999940;
+  box-shadow: 0 12px 48px #00000038;
+  animation: card-in 260ms var(--ease-open);
+}
+
+:root.dark .w12-login-card {
+  background: #232323ad;
+  border-color: #ffffff1c;
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* tokenav 品牌标记：SVG mask 蒙版 + 品牌色填充（#10B981），置于登录头像上方 */
+.w12-login-brand {
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 10px;
+  background: #10B981;
+  -webkit-mask: url('/tokenav-symbol-emerald.png') center / contain no-repeat;
+  mask: url('/tokenav-symbol-emerald.png') center / contain no-repeat;
+}
+
+/* 登录头像（accent 单色） */
+  .w12-login-avatar {
+  width: 68px;
+  height: 68px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: #fff;
+  font-size: 30px;
+  box-shadow: 0 6px 22px #00000030, 0 0 0 5px #ffffff55;
+}
+
+.w12-login-title {
+  text-align: center;
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 20px;
+}
+
+/* 登录按钮：Fluent accent 实心（弃渐变） */
+.w12-login-btn {
+  width: 100%;
+  height: 40px;
+  border: 0;
+  border-radius: 4px;
+  margin-top: 4px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 14px;
+  font-family: inherit;
+  font-weight: 600;
+  letter-spacing: 6px;
+  text-indent: 6px;
+  cursor: pointer;
+  transition: background 100ms, transform 80ms;
+}
+
+.w12-login-btn:hover {
+  background: var(--accent-hover);
+}
+
+.w12-login-btn:active {
+  background: var(--accent-pressed);
+  transform: scale(0.99);
+}
+
+.w12-login-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.w12-login-tip {
+  margin-top: 14px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text2);
+}
+

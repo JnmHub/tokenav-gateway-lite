@@ -1,0 +1,336 @@
+package dto
+
+import (
+	"encoding/json"
+	"testing"
+	"time"
+
+	"github.com/Wei-Shaw/sub2api/internal/gatewaylite"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/xai"
+	"github.com/Wei-Shaw/sub2api/internal/service"
+	"github.com/stretchr/testify/require"
+)
+
+func TestUsageLogFromService_IncludesOpenAIWSMode(t *testing.T) {
+	t.Parallel()
+
+	wsLog := &service.UsageLog{
+		RequestID:    "req_1",
+		Model:        "gpt-5.3-codex",
+		OpenAIWSMode: true,
+	}
+	httpLog := &service.UsageLog{
+		RequestID:    "resp_1",
+		Model:        "gpt-5.3-codex",
+		OpenAIWSMode: false,
+	}
+
+	require.True(t, UsageLogFromService(wsLog).OpenAIWSMode)
+	require.False(t, UsageLogFromService(httpLog).OpenAIWSMode)
+	require.True(t, UsageLogFromServiceAdmin(wsLog).OpenAIWSMode)
+	require.False(t, UsageLogFromServiceAdmin(httpLog).OpenAIWSMode)
+}
+
+func TestUsageLogFromService_RatePolicyAuditIsAdminOnly(t *testing.T) {
+	t.Parallel()
+	audit := &gatewaylite.RatePolicyAudit{
+		SchemaVersion:           1,
+		BillingScope:            "token",
+		GroupRateMultiplier:     1.2,
+		ResolvedRateMultiplier:  1.2,
+		PeakRateMultiplier:      1,
+		AppliedPeakMultiplier:   1,
+		EffectiveRateMultiplier: 1.2,
+		Timezone:                "UTC",
+		ResolvedAtMillis:        1_735_689_600_000,
+		Version:                 "v1:0123456789abcdef",
+	}
+	log := &service.UsageLog{RequestID: "req-rate-policy", Model: "gpt-5.6-sol", RatePolicyAudit: audit}
+
+	userJSON, err := json.Marshal(UsageLogFromService(log))
+	require.NoError(t, err)
+	require.NotContains(t, string(userJSON), "rate_policy_audit")
+	admin := UsageLogFromServiceAdmin(log)
+	require.Equal(t, audit, admin.RatePolicyAudit)
+	adminJSON, err := json.Marshal(admin)
+	require.NoError(t, err)
+	require.Contains(t, string(adminJSON), `"rate_policy_audit"`)
+}
+
+func TestUsageLogFromService_PrefersRequestTypeForLegacyFields(t *testing.T) {
+	t.Parallel()
+
+	log := &service.UsageLog{
+		RequestID:    "req_2",
+		Model:        "gpt-5.3-codex",
+		RequestType:  service.RequestTypeWSV2,
+		Stream:       false,
+		OpenAIWSMode: false,
+	}
+
+	userDTO := UsageLogFromService(log)
+	adminDTO := UsageLogFromServiceAdmin(log)
+
+	require.Equal(t, "ws_v2", userDTO.RequestType)
+	require.True(t, userDTO.Stream)
+	require.True(t, userDTO.OpenAIWSMode)
+	require.Equal(t, "ws_v2", adminDTO.RequestType)
+	require.True(t, adminDTO.Stream)
+	require.True(t, adminDTO.OpenAIWSMode)
+}
+
+func TestUsageCleanupTaskFromService_RequestTypeMapping(t *testing.T) {
+	t.Parallel()
+
+	requestType := int16(service.RequestTypeStream)
+	task := &service.UsageCleanupTask{
+		ID:     1,
+		Status: service.UsageCleanupStatusPending,
+		Filters: service.UsageCleanupFilters{
+			RequestType: &requestType,
+		},
+	}
+
+	dtoTask := UsageCleanupTaskFromService(task)
+	require.NotNil(t, dtoTask)
+	require.NotNil(t, dtoTask.Filters.RequestType)
+	require.Equal(t, "stream", *dtoTask.Filters.RequestType)
+}
+
+func TestRequestTypeStringPtrNil(t *testing.T) {
+	t.Parallel()
+	require.Nil(t, requestTypeStringPtr(nil))
+}
+
+func TestUsageLogFromService_IncludesServiceTierForUserAndAdmin(t *testing.T) {
+	t.Parallel()
+
+	serviceTier := "priority"
+	inboundEndpoint := "/v1/chat/completions"
+	upstreamEndpoint := "/v1/responses"
+	log := &service.UsageLog{
+		RequestID:             "req_3",
+		Model:                 "gpt-5.4",
+		ServiceTier:           &serviceTier,
+		InboundEndpoint:       &inboundEndpoint,
+		UpstreamEndpoint:      &upstreamEndpoint,
+		AccountRateMultiplier: f64Ptr(1.5),
+	}
+
+	userDTO := UsageLogFromService(log)
+	adminDTO := UsageLogFromServiceAdmin(log)
+
+	require.NotNil(t, userDTO.ServiceTier)
+	require.Equal(t, serviceTier, *userDTO.ServiceTier)
+	require.NotNil(t, userDTO.InboundEndpoint)
+	require.Equal(t, inboundEndpoint, *userDTO.InboundEndpoint)
+	require.NotNil(t, userDTO.UpstreamEndpoint)
+	require.Equal(t, upstreamEndpoint, *userDTO.UpstreamEndpoint)
+	require.NotNil(t, adminDTO.ServiceTier)
+	require.Equal(t, serviceTier, *adminDTO.ServiceTier)
+	require.NotNil(t, adminDTO.InboundEndpoint)
+	require.Equal(t, inboundEndpoint, *adminDTO.InboundEndpoint)
+	require.NotNil(t, adminDTO.UpstreamEndpoint)
+	require.Equal(t, upstreamEndpoint, *adminDTO.UpstreamEndpoint)
+	require.NotNil(t, adminDTO.AccountRateMultiplier)
+	require.InDelta(t, 1.5, *adminDTO.AccountRateMultiplier, 1e-12)
+}
+
+func TestUsageLogFromService_UsesRequestedModelAndKeepsUpstreamAdminOnly(t *testing.T) {
+	t.Parallel()
+
+	upstreamModel := "claude-sonnet-4-20250514"
+	responseModel := "claude-sonnet-4-20250515"
+	mismatch := true
+	log := &service.UsageLog{
+		RequestID:             "req_4",
+		Model:                 upstreamModel,
+		RequestedModel:        "claude-sonnet-4",
+		UpstreamModel:         &upstreamModel,
+		UpstreamResponseModel: &responseModel,
+		UpstreamModelMismatch: &mismatch,
+	}
+
+	userDTO := UsageLogFromService(log)
+	adminDTO := UsageLogFromServiceAdmin(log)
+
+	require.Equal(t, "claude-sonnet-4", userDTO.Model)
+	require.Equal(t, "claude-sonnet-4", adminDTO.Model)
+
+	userJSON, err := json.Marshal(userDTO)
+	require.NoError(t, err)
+	require.NotContains(t, string(userJSON), "upstream_model")
+	require.NotContains(t, string(userJSON), "upstream_response_model")
+	require.NotContains(t, string(userJSON), "upstream_model_mismatch")
+
+	adminJSON, err := json.Marshal(adminDTO)
+	require.NoError(t, err)
+	require.Contains(t, string(adminJSON), `"upstream_model":"claude-sonnet-4-20250514"`)
+	require.Contains(t, string(adminJSON), `"upstream_response_model":"claude-sonnet-4-20250515"`)
+	require.Contains(t, string(adminJSON), `"upstream_model_mismatch":true`)
+}
+
+func TestUsageLogFromServiceAdminExposesMainSiteIdentityWithoutInternalShadowEmail(t *testing.T) {
+	t.Parallel()
+	log := &service.UsageLog{
+		UserID: 99,
+		User: &service.User{
+			Email:    "gateway-lite-remote-user-42@local.invalid",
+			Username: "Joe",
+			Notes:    "joe@example.com",
+		},
+	}
+	admin := UsageLogFromServiceAdmin(log)
+	require.Equal(t, "Joe", admin.MainSiteUsername)
+	require.Equal(t, "joe@example.com", admin.MainSiteEmail)
+	require.Equal(t, int64(42), admin.MainSiteUserID)
+	body, err := json.Marshal(admin)
+	require.NoError(t, err)
+	require.NotContains(t, string(body), "gateway-lite-remote-user-42@local.invalid")
+}
+
+func TestUsageLogFromServiceAdminExposesRequestedAndEffectiveGroups(t *testing.T) {
+	t.Parallel()
+
+	requestedID := int64(10)
+	effectiveID := int64(20)
+	log := &service.UsageLog{
+		RequestID:       "req-group-route",
+		GroupID:         &effectiveID,
+		OriginalGroupID: &requestedID,
+		OriginalGroup:   &service.Group{ID: requestedID, Name: "严格分组"},
+		Group:           &service.Group{ID: effectiveID, Name: "允许分组"},
+	}
+
+	admin := UsageLogFromServiceAdmin(log)
+	require.Equal(t, requestedID, *admin.RequestedGroupID)
+	require.Equal(t, "严格分组", admin.RequestedGroupName)
+	require.Equal(t, effectiveID, *admin.EffectiveGroupID)
+	require.Equal(t, "允许分组", admin.EffectiveGroupName)
+	require.True(t, admin.GroupRerouted)
+
+	body, err := json.Marshal(admin)
+	require.NoError(t, err)
+	require.Contains(t, string(body), `"requested_group_id":10`)
+	require.Contains(t, string(body), `"effective_group_id":20`)
+	require.Contains(t, string(body), `"group_rerouted":true`)
+}
+
+func TestUsageLogFromService_FallsBackToLegacyModelWhenRequestedModelMissing(t *testing.T) {
+	t.Parallel()
+
+	log := &service.UsageLog{
+		RequestID: "req_legacy",
+		Model:     "claude-3",
+	}
+
+	userDTO := UsageLogFromService(log)
+	adminDTO := UsageLogFromServiceAdmin(log)
+
+	require.Equal(t, "claude-3", userDTO.Model)
+	require.Equal(t, "claude-3", adminDTO.Model)
+}
+
+func TestUsageLogFromService_IncludesImageBillingMetadataForUserAndAdmin(t *testing.T) {
+	t.Parallel()
+
+	imageSize := "4K"
+	inputSize := "1024x1024"
+	outputSize := "3840x2160"
+	source := "output"
+	log := &service.UsageLog{
+		RequestID:          "req_image_metadata",
+		Model:              "gpt-image-2",
+		ImageCount:         2,
+		ImageSize:          &imageSize,
+		ImageInputSize:     &inputSize,
+		ImageOutputSize:    &outputSize,
+		ImageSizeSource:    &source,
+		ImageSizeBreakdown: map[string]int{"4K": 2},
+	}
+
+	userDTO := UsageLogFromService(log)
+	adminDTO := UsageLogFromServiceAdmin(log)
+
+	for _, got := range []*UsageLog{userDTO, &adminDTO.UsageLog} {
+		require.Equal(t, 2, got.ImageCount)
+		require.NotNil(t, got.ImageSize)
+		require.Equal(t, imageSize, *got.ImageSize)
+		require.NotNil(t, got.ImageInputSize)
+		require.Equal(t, inputSize, *got.ImageInputSize)
+		require.NotNil(t, got.ImageOutputSize)
+		require.Equal(t, outputSize, *got.ImageOutputSize)
+		require.NotNil(t, got.ImageSizeSource)
+		require.Equal(t, source, *got.ImageSizeSource)
+		require.Equal(t, map[string]int{"4K": 2}, got.ImageSizeBreakdown)
+	}
+}
+
+func TestUsageLogFromService_PreservesHistoricalMissingImageSize(t *testing.T) {
+	t.Parallel()
+
+	log := &service.UsageLog{
+		RequestID:  "req_legacy_image_missing_size",
+		Model:      "gpt-image-2",
+		ImageCount: 1,
+		ImageSize:  nil,
+	}
+
+	dto := UsageLogFromService(log)
+	require.Equal(t, 1, dto.ImageCount)
+	require.Nil(t, dto.ImageSize)
+	require.Nil(t, dto.ImageInputSize)
+	require.Nil(t, dto.ImageOutputSize)
+	require.Nil(t, dto.ImageSizeSource)
+	require.Nil(t, dto.ImageSizeBreakdown)
+
+	body, err := json.Marshal(dto)
+	require.NoError(t, err)
+	require.Contains(t, string(body), `"image_size":null`)
+	require.NotContains(t, string(body), `"image_size":"2K"`)
+}
+
+func TestUsageLogFromServiceAdminIncludesGrokQuotaAndPauseDiagnostics(t *testing.T) {
+	t.Parallel()
+
+	until := time.Now().UTC().Add(10 * time.Minute)
+	limit := int64(100)
+	remaining := int64(7)
+	log := &service.UsageLog{
+		RequestID: "req_grok_diagnostics",
+		Model:     "grok-4.5",
+		Account: &service.Account{
+			ID:                      77,
+			Name:                    "grok-primary",
+			Platform:                service.PlatformGrok,
+			TempUnschedulableUntil:  &until,
+			TempUnschedulableReason: "grok rate limited",
+			Extra: map[string]any{
+				"grok_usage_snapshot": &xai.QuotaSnapshot{
+					Requests:          &xai.QuotaWindow{Limit: &limit, Remaining: &remaining},
+					SubscriptionTier:  "supergrok",
+					EntitlementStatus: "active",
+					HeadersObserved:   true,
+				},
+			},
+		},
+	}
+
+	adminDTO := UsageLogFromServiceAdmin(log)
+	require.NotNil(t, adminDTO.Account)
+	require.Equal(t, service.PlatformGrok, adminDTO.Account.Platform)
+	require.Equal(t, "grok rate limited", adminDTO.Account.TempUnschedulableReason)
+	require.NotNil(t, adminDTO.Account.TempUnschedulableUntil)
+	require.NotNil(t, adminDTO.Account.GrokQuotaSnapshot)
+	require.Equal(t, int64(7), *adminDTO.Account.GrokQuotaSnapshot.Requests.Remaining)
+	require.Equal(t, "active", adminDTO.Account.GrokQuotaSnapshot.EntitlementStatus)
+
+	userJSON, err := json.Marshal(UsageLogFromService(log))
+	require.NoError(t, err)
+	require.NotContains(t, string(userJSON), "grok_quota_snapshot")
+	require.NotContains(t, string(userJSON), "temp_unschedulable_reason")
+}
+
+func f64Ptr(value float64) *float64 {
+	return &value
+}

@@ -1,0 +1,137 @@
+package service
+
+import (
+	"strings"
+
+	"github.com/Wei-Shaw/sub2api/internal/pkg/apicompat"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
+)
+
+func NormalizeOpenAICompatRequestedModel(model string) string {
+	if openai.IsGPT61SolModelSpelling(model) {
+		return "gpt-6.1-sol"
+	}
+	trimmed := strings.TrimSpace(model)
+	if trimmed == "" {
+		return ""
+	}
+
+	normalized, _, ok := splitOpenAICompatReasoningModel(trimmed)
+	if !ok || normalized == "" {
+		return trimmed
+	}
+	return normalized
+}
+
+func applyOpenAICompatModelNormalization(req *apicompat.AnthropicRequest) {
+	if req != nil && openai.IsGPT61SolModelSpelling(req.Model) {
+		canonical := openai.CanonicalizeOpenAIModelAliasSpelling(req.Model)
+		if effort, ok := strings.CutPrefix(canonical, "gpt-6.1-sol-"); ok && effort != "openai-compact" {
+			req.Model = "gpt-6.1-sol"
+			if req.OutputConfig == nil {
+				req.OutputConfig = &apicompat.AnthropicOutputConfig{}
+			}
+			if req.OutputConfig.Effort == "" {
+				req.OutputConfig.Effort = effort
+			}
+			return
+		}
+	}
+
+	if req == nil {
+		return
+	}
+	originalModel := strings.TrimSpace(req.Model)
+	if originalModel == "" {
+		return
+	}
+
+	normalizedModel, derivedEffort, hasReasoningSuffix := splitOpenAICompatReasoningModel(originalModel)
+	if hasReasoningSuffix && normalizedModel != "" {
+		req.Model = normalizedModel
+	}
+
+	if req.OutputConfig != nil && strings.TrimSpace(req.OutputConfig.Effort) != "" {
+		return
+	}
+
+	claudeEffort := openAIReasoningEffortToClaudeOutputEffort(derivedEffort)
+	if claudeEffort == "" {
+		return
+	}
+
+	if req.OutputConfig == nil {
+		req.OutputConfig = &apicompat.AnthropicOutputConfig{}
+	}
+	req.OutputConfig.Effort = claudeEffort
+}
+
+func splitOpenAICompatReasoningModel(model string) (normalizedModel string, reasoningEffort string, ok bool) {
+	trimmed := strings.TrimSpace(model)
+	if trimmed == "" {
+		return "", "", false
+	}
+
+	modelID := trimmed
+	if strings.Contains(modelID, "/") {
+		parts := strings.Split(modelID, "/")
+		modelID = parts[len(parts)-1]
+	}
+	modelID = strings.TrimSpace(modelID)
+	if !strings.HasPrefix(strings.ToLower(modelID), "gpt-") {
+		return trimmed, "", false
+	}
+
+	parts := strings.FieldsFunc(strings.ToLower(modelID), func(r rune) bool {
+		switch r {
+		case '-', '_', ' ':
+			return true
+		default:
+			return false
+		}
+	})
+	if len(parts) == 0 {
+		return trimmed, "", false
+	}
+
+	last := strings.NewReplacer("-", "", "_", "", " ", "").Replace(parts[len(parts)-1])
+	switch last {
+	case "none", "minimal":
+	case "low", "medium", "high":
+		reasoningEffort = last
+	case "xhigh", "extrahigh":
+		reasoningEffort = "xhigh"
+	default:
+		return trimmed, "", false
+	}
+
+	return normalizeCodexModel(modelID), reasoningEffort, true
+}
+
+func openAIReasoningEffortToClaudeOutputEffort(effort string) string {
+	switch strings.TrimSpace(effort) {
+	case "low", "medium", "high":
+		return effort
+	case "xhigh":
+		return "max"
+	default:
+		return ""
+	}
+}
+
+// openAICompatAnthropicReasoningEffort 在最终上游模型确定后修正桥接结果。
+// Anthropic 的 max 通常转换成 OpenAI xhigh，但 GPT-5.6 原生支持 max，
+// 因此不能在别名或账号映射尚未解析时永久丢失该档位。
+func openAICompatAnthropicReasoningEffort(req *apicompat.AnthropicRequest, upstreamModel, convertedEffort string) string {
+	// 客户端显式禁用 thinking 时保持 none，不得被 max/xhigh 修正覆盖。
+	if convertedEffort == "none" {
+		return convertedEffort
+	}
+	if req == nil || req.OutputConfig == nil || !strings.EqualFold(strings.TrimSpace(req.OutputConfig.Effort), "max") {
+		return convertedEffort
+	}
+	if normalized := normalizeOpenAIReasoningEffortForModel(req.OutputConfig.Effort, upstreamModel); normalized != "" {
+		return normalized
+	}
+	return convertedEffort
+}

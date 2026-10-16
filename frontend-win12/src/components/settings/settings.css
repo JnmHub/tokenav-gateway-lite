@@ -1,0 +1,50 @@
+/* 共用表单按窗口容器宽度适配，业务字段与保存逻辑由各标签负责。 */
+.sw { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 1120px; margin-inline: auto; padding-bottom: 16px; }
+.card { padding: 16px; border-radius: 8px; background: var(--w12-card); border: 0; box-shadow: none; }
+.card-title { font-weight: 500; font-size: 14px; margin-bottom: 16px; }
+.card-sub { font-size: 12px; color: var(--w12-muted); margin: 0 0 16px; line-height: 1.6; overflow-wrap: anywhere; }
+.form { display: flex; flex-direction: column; }
+.frow { display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 4px 8px; margin: 0 -8px; border-radius: 8px; transition: background 100ms; }
+.frow:hover { background: var(--w12-hover); }
+.frow > label { flex: 0 0 168px; width: 168px; text-align: right; font-weight: 400; font-size: 13px; color: var(--w12-muted); }
+.frow > .fmain { flex: 1; min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.frow > .ant-switch, .fmain > .ant-switch { flex: none; }
+/* 说明至少保留可读宽度；空间不足整段换行，不收缩成竖排文字。 */
+.fmain > .static { flex: 1 1 220px; min-width: min(220px,100%); }
+.fld { width: min(260px,100%) !important; flex: 0 1 260px; max-width: 100%; }
+.fld-n { width: min(140px,100%) !important; flex: 0 1 140px; max-width: 100%; }
+/* 全宽字段在 flex 容器里必须主动撑满主轴，否则 tags/多选类控件空态会塌缩成只剩光标的窄条 */
+.fld-full { width: 100% !important; min-width: 0; flex: 1 1 100%; }
+.static { font-size: 13px; color: var(--w12-muted); line-height: 1.6; overflow-wrap: anywhere; }
+.mono { font-family: Consolas, monospace; font-size: 12px; }
+.hint { font-size: 12px; color: var(--w12-muted); line-height: 1.6; margin-top: 4px; overflow-wrap: anywhere; }
+.subcard { padding: 12px; border-radius: 8px; background: var(--w12-hover); border: 0; }
+.preset-group { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-height: 40px; }
+.preset-group > span { flex: 0 0 168px; text-align: right; margin-right: 4px; font-size: 13px; color: var(--w12-muted); }
+.preset-btn { height: 28px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--w12-border); background: transparent; color: var(--w12-muted); font-size: 12px; cursor: pointer; transition: background 100ms; }
+.preset-btn:hover { background: var(--w12-hover); }
+.preset-btn.on { background: color-mix(in srgb, var(--accent) 12%, transparent); border-color: var(--accent); color: var(--accent); }
+.chip { height: 28px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--w12-border); background: transparent; color: var(--w12-muted); font-size: 12px; cursor: pointer; font-family: Consolas, monospace; }
+.chip:hover { background: var(--w12-hover); }
+.chip.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+.chip-x { height: 28px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--w12-border); background: transparent; color: var(--w12-muted); font-size: 12px; cursor: pointer; font-family: Consolas, monospace; }
+.chip-x:hover { color: var(--w12-danger); border-color: var(--w12-danger); }
+.xbtn { height: 28px; min-width: 28px; padding: 0 8px; border-radius: 8px; border: 1px solid var(--w12-border); background: transparent; color: var(--w12-muted); font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 4px; }
+.xbtn:hover:not(:disabled) { background: var(--w12-hover); }
+.xbtn:disabled { opacity: .4; cursor: not-allowed; }
+.xbtn.danger:hover:not(:disabled) { color: var(--w12-danger); border-color: var(--w12-danger); background: color-mix(in srgb, var(--w12-danger) 8%, transparent); }
+.savebar { display: flex; justify-content: flex-end; margin-top: 16px; gap: 8px; }
+.save { height: 36px; padding: 0 16px; border-radius: 8px; }
+.sw-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(480px,100%),1fr)); gap: 8px 16px; }
+.frow-col { align-items: flex-start; }
+.fm-col { display: flex; flex-direction: column; align-items: stretch; min-width: 0; flex: 1; }
+.fm-col textarea, .fm-col .ant-input { width: 100%; }
+/* 设置应用自身是查询容器，所以桌面分屏/窄窗与手机使用相同规则。 */
+@container w12-settings (max-width: 620px) {
+  .card { padding: 12px; }
+  .frow { flex-wrap: wrap; gap: 8px; padding-block: 8px; }
+  .frow > label { flex-basis: 100%; width: 100%; text-align: left; }
+  .frow > .fmain, .fm-col { flex-basis: 100%; width: 100%; }
+  .fld, .fld-n { width: 100% !important; flex-basis: 100%; }
+  .preset-group > span { flex-basis: 100%; width: 100%; text-align: left; margin: 0; }
+}

@@ -1,0 +1,10 @@
+/* 旧控件规则按职责保留；样板逐模块迁移到 design 目录。 */
+@import "./legacy/fluent-tokens.css";
+@import "./legacy/fluent-controls.css";
+@import "./legacy/fluent-overlays.css";
+@import "./legacy/fluent-table.css";
+@import "./legacy/fluent-navigation.css";
+@import "./legacy/fluent-switch.css";
+@import "./legacy/fluent-detail.css";
+@import "./legacy/fluent-layout.css";
+@import "./legacy/fluent-fixed.css";
